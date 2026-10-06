@@ -1,0 +1,68 @@
+<div class="myskoda-tile">
+  <style>
+    .myskoda-tile { text-align: left; padding: 6px 10px 8px; font-size: 13px; line-height: 1.5; }
+    .myskoda-tile .ms-top { display: flex; gap: 12px; align-items: center; }
+    .myskoda-tile .ms-photo { flex: 0 0 42%; max-width: 190px; text-align: center; }
+    .myskoda-tile .ms-photo img { max-width: 100%; max-height: 110px; }
+    .myskoda-tile .ms-frame.ms-render { overflow: hidden; aspect-ratio: 2.3 / 1; }
+    .myskoda-tile .ms-frame.ms-render img { width: 100%; height: 100%; max-height: none; object-fit: cover; transform: scale(1.22); }
+    .myskoda-tile .ms-alert { margin-top: 8px; padding: 6px 8px; border-radius: 4px; background: rgba(240, 173, 78, 0.2); }
+    .myskoda-tile .ms-alert i { color: var(--al-warning-color, #f0ad4e); }
+    .myskoda-tile .ms-icons { margin-top: 4px; font-size: 18px; }
+    .myskoda-tile .ms-icons i { margin: 0 5px; }
+    .myskoda-tile .ms-stale { opacity: 0.35; }
+    .myskoda-tile .ms-stale-date { font-size: 11px; opacity: 0.8; }
+    .myskoda-tile .ms-ok { color: var(--al-success-color, #5cb85c); }
+    .myskoda-tile .ms-warn { color: var(--al-warning-color, #f0ad4e); }
+    .myskoda-tile .ms-info { color: var(--al-info-color, #5bc0de); }
+    .myskoda-tile .ms-identity { flex: 1 1 auto; min-width: 0; }
+    .myskoda-tile .ms-name { font-size: 15px; font-weight: bold; }
+    .myskoda-tile .ms-battery { margin: 8px 0 2px; }
+    .myskoda-tile .ms-bar { height: 14px; border-radius: 7px; background: rgba(127, 127, 127, 0.25); overflow: hidden; }
+    .myskoda-tile .ms-bar > div { height: 100%; border-radius: 7px; background: var(--al-success-color, #5cb85c); }
+    .myskoda-tile .ms-battery-text { display: flex; justify-content: space-between; font-weight: bold; }
+    .myskoda-tile .ms-cols { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+    .myskoda-tile .ms-block { flex: 1 1 170px; min-width: 0; }
+    .myskoda-tile .ms-title { font-size: 14px; font-weight: bold; margin: 4px 0 2px; border-bottom: 1px solid rgba(127, 127, 127, 0.35); }
+    .myskoda-tile .ms-title i { margin-right: 5px; }
+    .myskoda-tile .ms-row { display: flex; justify-content: space-between; gap: 8px; }
+    .myskoda-tile .ms-row > span:last-child { text-align: right; font-weight: bold; }
+    .myskoda-tile .ms-actions { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .myskoda-tile .ms-actions a { flex: 1 1 auto; }
+    .myskoda-tile select.ms-select { height: 28px; line-height: 1.2; padding: 2px 22px 2px 6px; width: auto; display: inline-block; font-weight: bold; }
+    .myskoda-tile .ms-row { align-items: center; }
+    .myskoda-tile .ms-service { margin-top: 6px; }
+    .myskoda-tile .ms-foot { margin-top: 6px; font-size: 12px; opacity: 0.8; }
+  </style>
+  <div class="ms-top">
+    <div class="ms-photo">
+      <div class="ms-frame #ms_image_class#"><img src="#ms_image#" alt="" onerror="this.onerror=null;this.parentNode.className='ms-frame';this.src='plugins/myskoda/plugin_info/myskoda_icon.png'"></div>
+      <div class="ms-icons">#ms_icons#</div>
+    </div>
+    <div class="ms-identity">#ms_identity#</div>
+  </div>
+  #ms_alert#
+  #ms_battery#
+  <div class="ms-cols">
+    #ms_charge#
+    #ms_climate#
+  </div>
+  #ms_service#
+  <div class="ms-foot">#ms_foot#</div>
+  <script>
+    (function() {
+      var tile = document.querySelector('.eqLogic[data-eqLogic_uid="#uid#"] .myskoda-tile')
+      if (!tile) return
+      tile.querySelectorAll('a[data-ms-cmd]').forEach(function(button) {
+        button.addEventListener('click', function() {
+          jeedom.cmd.execute({ id: button.getAttribute('data-ms-cmd') })
+        })
+      })
+      tile.querySelectorAll('select[data-ms-cmd]').forEach(function(select) {
+        select.addEventListener('change', function() {
+          jeedom.cmd.execute({ id: select.getAttribute('data-ms-cmd'), value: { slider: select.value } })
+        })
+      })
+    })()
+  </script>
+</div>

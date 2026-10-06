@@ -237,17 +237,20 @@ var myskodaJournal = (function() {
       var date = parse(state.day)
       date.setDate(date.getDate() + days)
       state.day = isoDate(date)
+      state.dayPicked = true
       refresh()
     }
     previous.addEventListener('click', function() { shift(-1) })
     next.addEventListener('click', function() { shift(1) })
     today.addEventListener('click', function() {
       state.day = isoDate(new Date())
+      state.dayPicked = true
       refresh()
     })
     dayInput.addEventListener('change', function() {
       if (dayInput.value) {
         state.day = dayInput.value
+        state.dayPicked = true
         refresh()
       }
     })
@@ -295,6 +298,18 @@ var myskodaJournal = (function() {
     function fail(text) {
       content.innerHTML = ''
       message.textContent = text
+    }
+
+    // Le journal est tiré de l'historique Jeedom : si l'historisation d'une commande nécessaire a été décochée,
+    // il reste vide sans raison apparente. L'avertissement nomme les commandes à recocher.
+    function warnHistory(result) {
+      if (!result.notHistorized || result.notHistorized.length == 0) {
+        return
+      }
+      var box = el('div', 'msj-message', '{{Le journal de bord ne peut pas se remplir : l\'historisation est décochée pour}} ' + result.notHistorized.join(', ')
+        + '. {{Pour la rétablir : page de l\'équipement, onglet Commandes, case « Historiser » de ces commandes, puis Sauvegarder. Le journal reprendra à partir de ce moment ; ce qui s\'est passé entre-temps n\'est pas récupérable.}}')
+      box.style.cssText = 'padding:8px 10px;border-radius:4px;background:rgba(240,173,78,0.18);opacity:1;'
+      content.appendChild(box)
     }
 
     function note(result) {
@@ -503,6 +518,16 @@ var myskodaJournal = (function() {
     function renderMap(map, day) {
       // Sans trajet ce jour-là, la carte n'a aucun trait à montrer : le dire, pour qu'on ne croie pas à un défaut
       var drawable = day.trips.filter(function(trip) { return trip.fromPosition && trip.toPosition }).length
+      if (state.jumped) {
+        state.jumped = false
+        content.appendChild(el('div', 'msj-message', '{{Aucun trajet aujourd\'hui : la carte montre le dernier jour où la voiture a roulé. Le bouton « Aujourd\'hui » y revient.}}'))
+      }
+      var loops = day.trips.filter(function(trip) { return trip.roundTrip })
+      if (loops.length > 0) {
+        content.appendChild(el('div', 'msj-message', '{{Aller-retour}} : ' + loops.map(function(trip) {
+          return hour(trip.start) + ' → ' + hour(trip.end) + ' (' + show(trip.distance, 'km') + ')'
+        }).join(', ') + '. {{La voiture est revenue à son point de départ : la carte l\'indique par un cercle bleu autour du lieu, faute de connaître le parcours.}}'))
+      }
       if (drawable == 0) {
         content.appendChild(el('div', 'msj-message', day.trips.length == 0
           ? '{{Aucun trajet ce jour-là. Les points gris sont les lieux où la voiture a stationné les jours précédents, pas des trajets du jour. Changez de jour avec la flèche pour voir les trajets d\'un autre jour.}}'
@@ -510,7 +535,7 @@ var myskodaJournal = (function() {
       }
       var holder = el('div', 'msj-map')
       content.appendChild(holder)
-      content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Point vert : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Points rouges : recharges ou pleins du jour choisi.}}'))
+      content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Point vert : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Cercle bleu en pointillés : aller-retour revenu à son point de départ. Points rouges : recharges ou pleins du jour choisi.}}'))
       loadLeaflet(function() {
         var chart = L.map(holder)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(chart)
@@ -521,7 +546,11 @@ var myskodaJournal = (function() {
           bounds.push([place.lat, place.lng])
         })
         day.trips.forEach(function(trip) {
-          if (trip.fromPosition && trip.toPosition) {
+          if (trip.fromPosition && trip.toPosition && trip.roundTrip) {
+            // Aller-retour revenu à son point de départ : pas de trait possible, un cercle bleu autour du lieu
+            L.circleMarker(trip.fromPosition, { radius: 18, color: '#2a7ab9', weight: 4, dashArray: '8 8', fill: false }).addTo(chart)
+              .bindPopup(el('span', null, '{{Aller-retour}} · ' + hour(trip.start) + ' → ' + hour(trip.end) + ' · ' + show(trip.distance, 'km')))
+          } else if (trip.fromPosition && trip.toPosition) {
             L.polyline([trip.fromPosition, trip.toPosition], { color: '#2a7ab9', weight: 4, dashArray: '8 8' }).addTo(chart)
               .bindPopup(el('span', null, hour(trip.start) + ' → ' + hour(trip.end) + ' · ' + show(trip.distance, 'km')))
           }
@@ -975,14 +1004,27 @@ var myskodaJournal = (function() {
             if (state.asked != asked) {
               return
             }
+            // Tant que l'utilisateur n'a pas choisi lui-même un jour, la carte s'ouvre sur le dernier jour où ce
+            // véhicule a roulé : un jour sans trajet n'aurait aucun trait à montrer
+            if (!state.dayPicked && state.jumpedFor != vehicle.value) {
+              state.jumpedFor = vehicle.value
+              if (result.trips.length == 0 && map.lastTripDay && map.lastTripDay != state.day) {
+                state.day = map.lastTripDay
+                state.jumped = true
+                refresh()
+                return
+              }
+            }
             message.textContent = ''
             content.innerHTML = ''
+            warnHistory(result)
             renderMap(map, result)
           }, fail)
           return
         }
         message.textContent = ''
         content.innerHTML = ''
+        warnHistory(result)
         render(result)
       }, fail)
     }

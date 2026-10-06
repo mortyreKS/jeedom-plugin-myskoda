@@ -92,6 +92,7 @@ try {
             'price' => $eqLogic->getDefaultPrice(),
             'trips' => $eqLogic->getTrips($start, $end),
             'charges' => $eqLogic->getCharges($start, $end),
+            'notHistorized' => $eqLogic->getMissingHistory(),
         ));
     }
 

@@ -4,6 +4,20 @@
 >
 >Version beta : le plugin est validé sur un véhicule à essence. La partie électrique (recharges, commandes de charge et de climatisation) et le chauffage auxiliaire n'ont pas encore été essayés sur un véhicule réel. Les retours sont les bienvenus.
 
+# 0.4 — 06/10/2026
+
+Première lecture réelle d'un véhicule électrique (Elroq) par un testeur le 06/10/2026 : batterie, autonomie, verrouillage, câble, limite de charge et climatisation conformes à l'application MyŠkoda. Recharges et commandes restent à essayer.
+
+Le même jour, sur ce véhicule : recharge détectée dès le branchement, et commandes de charge (démarrer, arrêter) et de climatisation (démarrer, arrêter) exécutées par la voiture.
+
+- Tuile : la consigne de climatisation se règle dans une liste (16 à 30 °C). Elle est mémorisée et utilisée au démarrage suivant ; si la climatisation tourne déjà, elle est relancée à la nouvelle température. Nouvelle commande « Régler la consigne de climatisation », utilisable dans les scénarios.
+- Carte : un aller-retour revenu à son point de départ, qui n'a pas de trait à tracer, est signalé par un cercle bleu autour du lieu et par un message.
+- Journal de bord : un avertissement nomme les commandes dont l'historisation a été décochée et qui l'empêchent de se remplir.
+- Documentation : pourquoi des arrêts courts ne découpent pas un trajet.
+- Documentation : l'information « Climatisation sans branchement autorisée » n'existe que si le véhicule la communique.
+
+- Carte : quand le jour courant n'a aucun trajet, la carte s'ouvre sur le dernier jour où la voiture a roulé. Le bouton « Aujourd'hui » y revient.
+
 # 0.3 — 06/10/2026
 
 Version de consolidation, après une relecture complète du code.

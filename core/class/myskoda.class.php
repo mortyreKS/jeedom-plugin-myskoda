@@ -114,6 +114,7 @@ class myskoda extends eqLogic {
     'startAirConditioning' => array(
       'climate_start' => array('Démarrer la climatisation', 'other', ''),
       'climate_start_temp' => array('Démarrer la climatisation à', 'slider', 'target_temperature'),
+      'climate_temp_set' => array('Régler la consigne de climatisation', 'slider', 'target_temperature'),
     ),
     'stopAirConditioning' => array('climate_stop' => array('Arrêter la climatisation', 'other', '')),
     'startAuxiliaryHeating' => array('aux_heating_start' => array('Démarrer le chauffage auxiliaire', 'other', '')),
@@ -850,7 +851,7 @@ class myskoda extends eqLogic {
             $cmd->setConfiguration('maxValue', 100);
             $cmd->setDisplay('parameters', array('step' => 10));
           }
-          if ($logicalId == 'climate_start_temp') {
+          if ($logicalId == 'climate_start_temp' || $logicalId == 'climate_temp_set') {
             // Bornes supposées, la spécification n'en donne pas : à vérifier à l'essai réel
             $cmd->setConfiguration('minValue', 16);
             $cmd->setConfiguration('maxValue', 30);
@@ -916,6 +917,10 @@ class myskoda extends eqLogic {
   // la case sur l'équipement ; sinon rien n'est envoyé à ce sujet et la voiture applique son propre réglage.
   public function climateStartBody($_temperature = null) {
     $body = array();
+    // Sans température donnée, c'est la consigne choisie dans Jeedom qui est demandée ; s'il n'y en a pas, la voiture garde la sienne
+    if ($_temperature === null && is_numeric($this->getConfiguration('climate_setpoint'))) {
+      $_temperature = (float) $this->getConfiguration('climate_setpoint');
+    }
     if ($_temperature !== null) {
       $body['targetTemperature'] = array('value' => (float) $_temperature, 'unit' => 'CELSIUS');
     }
@@ -923,6 +928,23 @@ class myskoda extends eqLogic {
       $body['airConditioningWithoutExternalPower'] = true;
     }
     return empty($body) ? new stdClass() : $body;
+  }
+
+  // Consigne de climatisation choisie dans Jeedom. Škoda n'a pas de demande pour régler la température seule : elle
+  // n'est transmise qu'au démarrage. La consigne est donc mémorisée pour le prochain démarrage ; si la climatisation
+  // tourne déjà, elle est relancée avec la nouvelle température.
+  public function setClimateSetpoint($_temperature) {
+    if (!is_numeric($_temperature)) {
+      throw new Exception(__('La consigne de climatisation doit être un nombre', __FILE__));
+    }
+    $temperature = round(max(16, min(30, (float) $_temperature)) * 2) / 2;
+    $this->setConfiguration('climate_setpoint', $temperature);
+    $this->save(true);
+    $running = $this->getCmd('info', 'climate_on');
+    if (is_object($running) && $running->execCmd() == 1) {
+      $this->sendCommand('POST', 'air-conditioning/start', $this->climateStartBody($temperature));
+    }
+    $this->refreshWidget();
   }
 
   // Le chauffage auxiliaire est la seule commande pour laquelle Škoda exige le code S-PIN du compte
@@ -1079,7 +1101,10 @@ class myskoda extends eqLogic {
       $places[$index]['price'] = isset($place[$key]) ? $place[$key] : null;
       unset($places[$index]['priceFuel']);
     }
-    return array('places' => $places, 'now' => $now);
+    // Dernier jour où le véhicule a roulé (sur 90 jours) : la carte s'y ouvre quand le jour courant n'a aucun trajet
+    $trips = $this->periods('moving', date('Y-m-d 00:00:00', time() - 90 * 86400), date('Y-m-d H:i:s'));
+    $last = end($trips);
+    return array('places' => $places, 'now' => $now, 'lastTripDay' => ($last === false) ? null : substr($last[0], 0, 10));
   }
 
   // Valeurs d'une info historisée sur un intervalle, précédées de la valeur au début : liste de (date, valeur)
@@ -1293,6 +1318,8 @@ class myskoda extends eqLogic {
       $levelEnd = $this->valueAt($this->levelId(), $end);
       $used = self::difference($levelStart, $levelEnd, 0);
       $energy = ($capacity > 0 && $used !== null) ? round($capacity * $used / 100, 1) : null;
+      $fromPosition = $this->positionAt($start);
+      $toPosition = $ongoing ? null : $this->positionAt(date('Y-m-d H:i:s', strtotime($end) + 120));
       $trips[] = array(
         'type' => 'trip',
         'start' => $start,
@@ -1300,8 +1327,12 @@ class myskoda extends eqLogic {
         'ongoing' => $ongoing,
         'minutes' => $minutes,
         'from' => $this->placeAt($start),
-        'fromPosition' => $this->positionAt($start),
-        'toPosition' => $ongoing ? null : $this->positionAt(date('Y-m-d H:i:s', strtotime($end) + 120)),
+        'fromPosition' => $fromPosition,
+        'toPosition' => $toPosition,
+        // Aller-retour : le véhicule est revenu se garer là d'où il était parti. Škoda ne donnant aucune position
+        // en route, la carte n'a pas de trait à tracer et montre le lieu par un cercle.
+        'roundTrip' => (is_array($fromPosition) && is_array($toPosition)
+          && self::distanceMeters($fromPosition[0], $fromPosition[1], $toPosition[0], $toPosition[1]) <= self::PLACE_RADIUS),
         // La position d'arrivée est écrite juste après la fin du trajet, dans la même lecture
         'to' => $ongoing ? null : $this->placeAt(date('Y-m-d H:i:s', strtotime($end) + 120)),
         'distance' => $distance,
@@ -1405,6 +1436,23 @@ class myskoda extends eqLogic {
     );
   }
 
+  // Commandes dont le journal de bord a besoin et dont l'historisation a été décochée : liste de leurs noms.
+  // Le journal reconstitue trajets, recharges et pleins à partir de l'historique Jeedom : sans lui, il reste vide.
+  public function getMissingHistory() {
+    $needed = array('moving', 'mileage', 'latitude', 'longitude', $this->levelId(), $this->rangeId());
+    if ($this->getKind() != 'fuel') {
+      $needed = array_merge($needed, array('charging', 'charge_power'));
+    }
+    $missing = array();
+    foreach (array_unique($needed) as $logicalId) {
+      $cmd = $this->getCmd('info', $logicalId);
+      if (is_object($cmd) && $cmd->getIsHistorized() != 1) {
+        $missing[] = $cmd->getName();
+      }
+    }
+    return $missing;
+  }
+
   // Journal d'une journée : trajets, recharges et totaux
   public function getDay($_date) {
     $start = $_date . ' 00:00:00';
@@ -1448,6 +1496,7 @@ class myskoda extends eqLogic {
       'capacity' => $this->getCapacity(),
       'price' => $this->getDefaultPrice(),
       'now' => $this->getNow(),
+      'notHistorized' => $this->getMissingHistory(),
     );
   }
 
@@ -1648,7 +1697,15 @@ class myskoda extends eqLogic {
     if ($state !== null) {
       $climate .= self::tileRow(__('État', __FILE__), isset(self::$_climateStateLabels[$state]) ? __(self::$_climateStateLabels[$state], __FILE__) : htmlspecialchars($state));
     }
-    if ($get('target_temperature') !== null) {
+    if (isset($action['climate_temp_set'])) {
+      // Liste de la consigne : la valeur choisie dans Jeedom, à défaut celle de la voiture ; elle sert au prochain démarrage
+      $setpoint = is_numeric($this->getConfiguration('climate_setpoint')) ? (float) $this->getConfiguration('climate_setpoint') : (($get('target_temperature') !== null) ? (float) $get('target_temperature') : null);
+      $options = ($setpoint === null) ? '<option value="" selected>—</option>' : '';
+      for ($degree = 16.0; $degree <= 30.0; $degree += 0.5) {
+        $options .= '<option value="' . $degree . '"' . (($setpoint !== null && abs($setpoint - $degree) < 0.01) ? ' selected' : '') . '>' . str_replace('.', ',', (string) $degree) . ' °C</option>';
+      }
+      $climate .= self::tileRow(__('Consigne', __FILE__), '<select class="form-control ms-select" data-ms-cmd="' . $action['climate_temp_set']->getId() . '">' . $options . '</select>');
+    } elseif ($get('target_temperature') !== null) {
       $climate .= self::tileRow(__('Consigne', __FILE__), str_replace('.', ',', (string) round((float) $get('target_temperature'), 1)) . ' °C');
     }
     if ($get('climate_on') == 1 && $get('climate_ready_at') !== null) {
@@ -1732,6 +1789,9 @@ class myskodaCmd extends cmd {
         break;
       case 'climate_start_temp':
         $eqLogic->sendCommand('POST', 'air-conditioning/start', $eqLogic->climateStartBody((float) $_options['slider']));
+        break;
+      case 'climate_temp_set':
+        $eqLogic->setClimateSetpoint($_options['slider']);
         break;
       case 'climate_stop':
         $eqLogic->sendCommand('POST', 'air-conditioning/stop');

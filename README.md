@@ -2,7 +2,7 @@
 
 Suivi et pilotage des véhicules Škoda dans Jeedom par l'[API publique officielle MyŠkoda](https://public.api.connect.skoda-auto.cz/docs).
 
-**Version beta.** Validé sur un véhicule à essence ; la partie électrique (recharges, commandes de charge et de climatisation) et le chauffage auxiliaire n'ont pas encore été essayés sur un véhicule réel.
+**Version beta.** Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et le journal de bord d'une électrique sur plusieurs jours.
 
 ## Prérequis
 

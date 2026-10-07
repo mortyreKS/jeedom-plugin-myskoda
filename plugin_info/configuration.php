@@ -58,8 +58,8 @@ if (!isConnect()) {
       </div>
     </div>
     <div class="form-group">
-      <label class="col-md-4 control-label">{{Lecture à l'arrêt}}
-        <sup><i class="fas fa-question-circle tooltips" title="{{Škoda autorise 20 requêtes par heure et par véhicule, commandes comprises}}"></i></sup>
+      <label class="col-md-4 control-label">{{Lecture à l'arrêt et en charge}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{Škoda autorise 20 requêtes par heure et par véhicule, commandes comprises : chaque commande en coûte deux (la commande, puis la relecture une minute après). Ce rythme vaut aussi pendant une recharge, pour garder des requêtes pour les commandes}}"></i></sup>
       </label>
       <div class="col-md-4">
         <select class="configKey form-control" data-l1key="interval">
@@ -71,8 +71,8 @@ if (!isConnect()) {
       </div>
     </div>
     <div class="form-group">
-      <label class="col-md-4 control-label">{{Lecture en déplacement ou en charge}}
-        <sup><i class="fas fa-question-circle tooltips" title="{{Rythme gardé encore 10 minutes après l'arrêt. Plus la lecture est rapide, plus les trajets et les recharges sont suivis finement. À 3 minutes, tout le quota part en lectures : il ne reste presque rien pour les commandes}}"></i></sup>
+      <label class="col-md-4 control-label">{{Lecture en déplacement}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{Rythme gardé encore 10 minutes après l'arrêt, et pendant les 10 minutes qui suivent le début ou la fin d'une recharge. Plus la lecture est rapide, plus les trajets sont suivis finement. À 3 minutes, tout le quota part en lectures : il ne reste presque rien pour les commandes}}"></i></sup>
       </label>
       <div class="col-md-4">
         <select class="configKey form-control" data-l1key="interval_active">
@@ -81,6 +81,14 @@ if (!isConnect()) {
           <option value="3">{{Toutes les 3 minutes}}</option>
           <option value="10">{{Toutes les 10 minutes}}</option>
         </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-md-4 control-label">{{Rayon des lieux favoris (m)}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{Un stationnement fait à moins de cette distance d'un lieu favori (Maison, Travail…) lui est rattaché. La position transmise par la voiture peut s'écarter de plus de cent mètres au même endroit. Chaque favori peut avoir son propre rayon, réglé dans le journal de bord, sous la carte}}"></i></sup>
+      </label>
+      <div class="col-md-4">
+        <input class="configKey form-control" data-l1key="favorite_radius" placeholder="200"/>
       </div>
     </div>
     <div class="form-group">

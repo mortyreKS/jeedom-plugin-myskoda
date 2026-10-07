@@ -2,7 +2,23 @@
 
 >**IMPORTANT**
 >
->Version beta : le plugin est validé sur un véhicule à essence. La partie électrique (recharges, commandes de charge et de climatisation) et le chauffage auxiliaire n'ont pas encore été essayés sur un véhicule réel. Les retours sont les bienvenus.
+>Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et le journal de bord d'une électrique sur plusieurs jours. Les retours sont les bienvenus.
+
+# 0.5 — 07/10/2026
+
+- **Nouvel onglet « Lieux »** dans le journal de bord, pour gérer les lieux où la voiture se gare :
+  - **lieux favoris** (Maison, Travail, École…) : tout stationnement fait dans le rayon d'un favori lui est rattaché, même si la position transmise par la voiture s'écarte un peu. Rayon général dans la configuration du plugin (200 m par défaut), rayon propre à chaque favori si besoin ;
+  - **ajout d'un favori** par son adresse (recherche faite par votre Jeedom auprès d'OpenStreetMap, à la demande) ou par un clic sur la carte ; le favori « Maison » peut aussi être créé d'un clic aux coordonnées du domicile connues de Jeedom ;
+  - **adresse affichée corrigeable**, et emplacement d'un lieu existant affinable sur la carte ;
+  - favoris rangés dans l'ordre choisi (glisser-déposer par la poignée, ou flèches), chacun avec sa couleur, reprise sur les cartes ; étoile jaune pour passer un lieu en favori ;
+  - les autres arrêts de la voiture sont listés à part, les plus récents en tête ; un lieu créé par erreur se supprime ;
+  - la case « Nom » propose les noms déjà donnés ; deux lieux de même nom comptent pour un seul.
+- Onglet « Carte » : sous la carte, le détail des trajets et des recharges ou pleins du jour.
+- Fiches des trajets et des recharges : chacune montre la photo du véhicule concerné et, s'il y en a plusieurs, son nom.
+- Quota : pendant une recharge, le plugin lit désormais au rythme de l'arrêt (10 minutes) et non plus au rythme rapide, pour laisser des requêtes aux commandes ; le rythme rapide ne dure que les 10 minutes qui suivent le début ou la fin de la charge. La documentation détaille ce que coûte chaque commande.
+- Journal de bord ouvert en version ordinateur sur un téléphone : la tuile de l'onglet « Véhicule » ne dépasse plus de l'écran.
+- Quand Škoda répond sans aucune donnée du véhicule (« indisponible »), la tuile et le journal de bord l'indiquent, avec l'heure depuis laquelle cela dure. Nouvelle commande info « Données Škoda indisponibles depuis », vide en temps normal, utilisable dans un scénario.
+
 
 # 0.4 — 06/10/2026
 

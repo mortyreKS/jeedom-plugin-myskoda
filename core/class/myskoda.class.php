@@ -100,6 +100,7 @@ class myskoda extends eqLogic {
     'service_mot_days' => array('Contrôle technique : jours restants', 'numeric', 'j', 0, 1),
     'service_alert' => array('Entretien à prévoir', 'string', '', 0, 1),
     'services_disabled' => array('Services désactivés', 'string', '', 0, 1),
+    'unavailable_since' => array('Données Škoda indisponibles depuis', 'string', '', 0, 1),
     'api_quota_remaining' => array('Requêtes restantes', 'numeric', '', 0, 1),
     'api_key_expires' => array('Expiration de la clé', 'string', '', 0, 0),
   );
@@ -460,7 +461,11 @@ class myskoda extends eqLogic {
     }
   }
 
-  // Vrai si le véhicule roule ou charge, ou vient de s'arrêter : la lecture passe alors au rythme rapide
+  // Vrai quand la lecture doit passer au rythme rapide : le véhicule roule, ou vient de s'arrêter, ou une recharge
+  // vient de commencer ou de finir. Pendant toute la durée d'une recharge, en revanche, le rythme reste celui de
+  // l'arrêt : une recharge dure des heures, et la lire toutes les cinq minutes prenait douze des vingt requêtes de
+  // l'heure, sans rien laisser aux commandes (constaté chez un testeur le 2026-10-07). Les heures de début et de fin
+  // restent exactes, puisqu'elles viennent des relevés datés par la voiture.
   public function isBusy() {
     foreach (array('moving', 'charging') as $logicalId) {
       $cmd = $this->getCmd('info', $logicalId);
@@ -468,8 +473,9 @@ class myskoda extends eqLogic {
         continue;
       }
       $value = $cmd->execCmd();
-      // Sans valeur connue, la date rendue par le core est l'heure courante : elle ne dit rien d'un arrêt récent
-      if ($value == 1 || ($value !== '' && $value !== null && (time() - strtotime((string) $cmd->getValueDate())) < self::ACTIVE_HOLD)) {
+      // Sans valeur connue, la date rendue par le core est l'heure courante : elle ne dit rien d'un changement récent
+      $recent = ($value !== '' && $value !== null && (time() - strtotime((string) $cmd->getValueDate())) < self::ACTIVE_HOLD);
+      if (($logicalId == 'moving' && $value == 1) || $recent) {
         return true;
       }
     }
@@ -557,7 +563,9 @@ class myskoda extends eqLogic {
     if (isset($vehicle['operations']) && is_array($vehicle['operations'])) {
       $this->syncActions($vehicle);
     }
-    $this->applyErrors((isset($response['errors']) && is_array($response['errors'])) ? $response['errors'] : array());
+    $errors = (isset($response['errors']) && is_array($response['errors'])) ? $response['errors'] : array();
+    $this->applyErrors($errors);
+    $this->updateAvailability($vehicle, $errors);
 
     // Quota presque épuisé : garder le reste pour les commandes et attendre le renouvellement
     $remaining = $this->applyQuotaHeaders($api);
@@ -584,6 +592,29 @@ class myskoda extends eqLogic {
 
   private function disabledKey() {
     return 'myskoda::disabled::' . $this->getId();
+  }
+
+  // Škoda répond parfois sans aucune donnée du véhicule, chaque partie étant « UNAVAILABLE » (constaté le 2026-10-07
+  // pendant un trajet : cinq lectures sur six pendant une demi-heure). Les valeurs affichées sont alors les dernières
+  // reçues et un trajet en cours ne peut pas se terminer : l'heure de la première réponse vide est gardée pour le dire.
+  public function updateAvailability($_vehicle, $_errors) {
+    $unavailable = 0;
+    foreach ($_errors as $error) {
+      if (substr((string) self::dig($error, 'type'), -12) == '_UNAVAILABLE') {
+        $unavailable++;
+      }
+    }
+    $empty = ($unavailable > 0 && !isset($_vehicle['status']) && !isset($_vehicle['odometer']));
+    $cmd = $this->getCmd('info', 'unavailable_since');
+    if (!$empty) {
+      if (is_object($cmd) && $cmd->execCmd() != '') {
+        $this->updateInfo('unavailable_since', '');
+      }
+      return;
+    }
+    if (!is_object($cmd) || $cmd->execCmd() == '') {
+      $this->updateInfo('unavailable_since', date('Y-m-d H:i:s'));
+    }
   }
 
   // Erreurs partielles de la réponse. Une partie « DISABLED » existe sur le véhicule mais Škoda ne la délivre pas
@@ -997,10 +1028,41 @@ class myskoda extends eqLogic {
   }
 
   // Indice du lieu connu le plus proche dans le rayon ; null si aucun
+  // Rayon, en mètres, dans lequel un stationnement est rattaché à un lieu favori qui n'a pas son propre rayon
+  const FAVORITE_RADIUS = 200;
+
+  public static function favoriteRadius() {
+    $radius = config::byKey('favorite_radius', __CLASS__, self::FAVORITE_RADIUS);
+    return (is_numeric($radius) && $radius > 0) ? (float) $radius : (float) self::FAVORITE_RADIUS;
+  }
+
+  // Indice du lieu auquel appartient une position ; null si aucun. Les lieux favoris passent d'abord, chacun avec son
+  // rayon (le sien, à défaut celui de la configuration du plugin) : la position transmise par la voiture peut s'écarter
+  // de plus de cent mètres d'un stationnement à l'autre au même endroit. Les autres lieux gardent un rayon court.
   private static function nearestPlace($_places, $_lat, $_lng) {
     $nearest = null;
+    $best = null;
+    $default = self::favoriteRadius();
+    foreach ($_places as $index => $place) {
+      if (empty($place['favorite'])) {
+        continue;
+      }
+      $radius = (isset($place['radius']) && is_numeric($place['radius']) && $place['radius'] > 0) ? (float) $place['radius'] : $default;
+      $distance = self::distanceMeters($_lat, $_lng, $place['lat'], $place['lng']);
+      if ($distance <= $radius && ($best === null || $distance < $best)) {
+        $best = $distance;
+        $nearest = $index;
+      }
+    }
+    if ($nearest !== null) {
+      return $nearest;
+    }
     $best = self::PLACE_RADIUS;
     foreach ($_places as $index => $place) {
+      // Un favori n'est rattaché que dans son propre rayon, qui peut être plus serré que le rayon court
+      if (!empty($place['favorite'])) {
+        continue;
+      }
       $distance = self::distanceMeters($_lat, $_lng, $place['lat'], $place['lng']);
       if ($distance <= $best) {
         $best = $distance;
@@ -1017,7 +1079,8 @@ class myskoda extends eqLogic {
     $places = $this->getPlaces();
     $index = self::nearestPlace($places, $_lat, $_lng);
     if ($index !== null) {
-      if ($places[$index]['address'] == $_address) {
+      // L'adresse d'un favori ne suit pas chaque stationnement fait dans son rayon : elle reste celle de son point
+      if ($places[$index]['address'] == $_address || !empty($places[$index]['addressFixed']) || (!empty($places[$index]['favorite']) && $places[$index]['address'] != '')) {
         return;
       }
       $places[$index]['address'] = $_address;
@@ -1065,12 +1128,19 @@ class myskoda extends eqLogic {
   }
 
   // Donne ou retire le nom et le prix du kWh d'un lieu mémorisé ; la commande « Lieu » suit si le véhicule y est stationné
-  public function renamePlace($_index, $_name, $_price = '') {
+  // $_favorite et $_radius : null pour ne pas y toucher. Un favori rattache à lui tout stationnement fait dans son rayon.
+  // $_address : null pour garder l'adresse ; sinon l'adresse affichée, corrigée par l'utilisateur.
+  public function renamePlace($_index, $_name, $_price = '', $_favorite = null, $_radius = null, $_address = null) {
     $places = $this->getPlaces();
     if (!isset($places[$_index])) {
       throw new Exception(__('Lieu inconnu', __FILE__));
     }
     $places[$_index]['name'] = trim($_name);
+    if ($_address !== null && trim($_address) != $places[$_index]['address']) {
+      $places[$_index]['address'] = trim($_address);
+      // Une adresse corrigée à la main n'est plus remplacée par celle que Škoda donne à chaque stationnement
+      $places[$_index]['addressFixed'] = true;
+    }
     $price = (float) str_replace(',', '.', $_price);
     $key = $this->placePriceKey();
     if ($price > 0) {
@@ -1078,7 +1148,204 @@ class myskoda extends eqLogic {
     } else {
       unset($places[$_index][$key]);
     }
-    config::save($this->placesKey(), json_encode(array_values($places), JSON_UNESCAPED_UNICODE), __CLASS__);
+    if ($_favorite !== null) {
+      if ($_favorite && $places[$_index]['name'] == '') {
+        throw new Exception(__('Donnez d\'abord un nom à ce lieu pour en faire un favori', __FILE__));
+      }
+      if ($_favorite) {
+        $places[$_index]['favorite'] = true;
+      } else {
+        unset($places[$_index]['favorite'], $places[$_index]['radius']);
+      }
+    }
+    if ($_radius !== null && !empty($places[$_index]['favorite'])) {
+      $radius = (float) str_replace(',', '.', $_radius);
+      if ($radius > 0) {
+        $places[$_index]['radius'] = round(max(10, min(5000, $radius)));
+      } else {
+        unset($places[$_index]['radius']);
+      }
+    }
+    $this->savePlaces($places);
+  }
+
+  // Situe une adresse écrite par l'utilisateur : (lat, lng, label). La recherche est faite par la box auprès du
+  // service Nominatim d'OpenStreetMap, à la demande seulement : le navigateur ne peut pas le faire lui-même, la règle
+  // de sécurité que Jeedom installe dans Apache (Content-Security-Policy, default-src 'self') l'interdit.
+  public static function searchAddress($_address) {
+    $address = trim((string) $_address);
+    if ($address == '') {
+      throw new Exception(__('Saisissez une adresse, ou cliquez sur la carte pour placer le point', __FILE__));
+    }
+    $ch = curl_init('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' . rawurlencode($address));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+    // Le service demande que chaque application s'identifie
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('User-Agent: Jeedom-plugin-MySkoda/' . self::getVersionLabel(), 'Accept-Language: ' . str_replace('_', '-', (string) config::byKey('language', 'core', 'fr_FR'))));
+    $raw = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    $found = ($raw === false || $status != 200) ? null : json_decode($raw, true);
+    if (!is_array($found)) {
+      throw new Exception(__('La recherche d\'adresse n\'a pas abouti. Cliquez sur la carte pour placer le point vous-même', __FILE__));
+    }
+    if (count($found) == 0 || !isset($found[0]['lat']) || !isset($found[0]['lon'])) {
+      throw new Exception(__('Adresse introuvable. Vérifiez-la, ou cliquez sur la carte pour placer le point vous-même', __FILE__));
+    }
+    return array('lat' => (float) $found[0]['lat'], 'lng' => (float) $found[0]['lon'], 'label' => isset($found[0]['display_name']) ? (string) $found[0]['display_name'] : $address);
+  }
+
+  // Crée un lieu favori à un point choisi par l'utilisateur (adresse cherchée ou clic sur la carte), avec l'adresse
+  // qu'il a écrite : utile quand celle que Škoda donne pour un stationnement est fausse
+  public function addPlace($_lat, $_lng, $_name, $_address = '', $_radius = '') {
+    if (!is_numeric($_lat) || !is_numeric($_lng) || abs((float) $_lat) > 90 || abs((float) $_lng) > 180) {
+      throw new Exception(__('Placez d\'abord le point sur la carte', __FILE__));
+    }
+    if (trim($_name) == '') {
+      throw new Exception(__('Donnez un nom à ce favori (Maison, Travail…)', __FILE__));
+    }
+    $place = array('lat' => (float) $_lat, 'lng' => (float) $_lng, 'address' => trim($_address), 'name' => trim($_name), 'favorite' => true);
+    if (trim($_address) != '') {
+      $place['addressFixed'] = true;
+    }
+    $radius = (float) str_replace(',', '.', $_radius);
+    if ($radius > 0) {
+      $place['radius'] = round(max(10, min(5000, $radius)));
+    }
+    $places = $this->getPlaces();
+    $places[] = $place;
+    $this->savePlaces($places);
+  }
+
+  // Couleurs proposées pour un favori sur les cartes : code => nom. La première est celle d'un favori sans couleur choisie.
+  private static $_placeColors = array(
+    '#554E5E' => 'Gris violet',
+    '#3a9d3a' => 'Vert',
+    '#d9534f' => 'Rouge',
+    '#2a7ab9' => 'Bleu',
+    '#f0932b' => 'Orange',
+    '#8e44ad' => 'Violet',
+    '#e6b800' => 'Jaune',
+    '#e84393' => 'Rose',
+    '#16a085' => 'Turquoise',
+    '#34495e' => 'Bleu nuit',
+  );
+
+  public static function placeColors() {
+    $colors = array();
+    foreach (self::$_placeColors as $code => $name) {
+      $colors[] = array($code, __($name, __FILE__));
+    }
+    return $colors;
+  }
+
+  // Donne sa couleur à un favori
+  public function colorPlace($_index, $_color) {
+    $places = $this->getPlaces();
+    if (!isset($places[$_index])) {
+      throw new Exception(__('Lieu inconnu', __FILE__));
+    }
+    if (!isset(self::$_placeColors[$_color])) {
+      throw new Exception(__('Couleur inconnue', __FILE__));
+    }
+    $places[$_index]['color'] = $_color;
+    $this->savePlaces($places);
+  }
+
+  // Monte (-1) ou descend (+1) un favori d'un rang parmi les favoris : l'ordre des favoris est celui de la liste
+  public function reorderPlace($_index, $_direction) {
+    $places = array_values($this->getPlaces());
+    if (!isset($places[$_index]) || empty($places[$_index]['favorite'])) {
+      throw new Exception(__('Lieu inconnu', __FILE__));
+    }
+    $step = ($_direction < 0) ? -1 : 1;
+    for ($other = $_index + $step; isset($places[$other]); $other += $step) {
+      if (!empty($places[$other]['favorite'])) {
+        $moved = $places[$_index];
+        $places[$_index] = $places[$other];
+        $places[$other] = $moved;
+        $this->savePlaces($places);
+        return;
+      }
+    }
+  }
+
+  // Place un favori au rang voulu parmi les favoris (0 = premier), les autres se décalant : c'est le glisser-déposer
+  // de la liste. Les lieux ordinaires gardent leur place dans le tableau enregistré.
+  public function rankPlace($_index, $_rank) {
+    $places = array_values($this->getPlaces());
+    if (!isset($places[$_index]) || empty($places[$_index]['favorite'])) {
+      throw new Exception(__('Lieu inconnu', __FILE__));
+    }
+    $slots = array();
+    foreach ($places as $index => $place) {
+      if (!empty($place['favorite'])) {
+        $slots[] = $index;
+      }
+    }
+    $order = $slots;
+    $from = array_search($_index, $order);
+    $rank = max(0, min(count($order) - 1, (int) $_rank));
+    array_splice($order, $from, 1);
+    array_splice($order, $rank, 0, array($_index));
+    $result = $places;
+    foreach ($slots as $position => $slot) {
+      $result[$slot] = $places[$order[$position]];
+    }
+    $this->savePlaces($result);
+  }
+
+  // Déplace le point d'un lieu existant, affiné par l'utilisateur sur la carte
+  public function movePlace($_index, $_lat, $_lng) {
+    $places = $this->getPlaces();
+    if (!isset($places[$_index])) {
+      throw new Exception(__('Lieu inconnu', __FILE__));
+    }
+    if (!is_numeric($_lat) || !is_numeric($_lng) || abs((float) $_lat) > 90 || abs((float) $_lng) > 180) {
+      throw new Exception(__('Placez d\'abord le point sur la carte', __FILE__));
+    }
+    $places[$_index]['lat'] = (float) $_lat;
+    $places[$_index]['lng'] = (float) $_lng;
+    $this->savePlaces($places);
+  }
+
+  // Retire un lieu mémorisé (créé par une position erronée, ou devenu inutile)
+  public function deletePlace($_index) {
+    $places = $this->getPlaces();
+    if (!isset($places[$_index])) {
+      throw new Exception(__('Lieu inconnu', __FILE__));
+    }
+    unset($places[$_index]);
+    $this->savePlaces($places);
+  }
+
+  // Coordonnées du domicile saisies dans la configuration générale de Jeedom ; null si elles ne le sont pas
+  public static function jeedomHome() {
+    $lat = config::byKey('info::latitude');
+    $lng = config::byKey('info::longitude');
+    return (is_numeric($lat) && is_numeric($lng) && ((float) $lat != 0 || (float) $lng != 0)) ? array((float) $lat, (float) $lng) : null;
+  }
+
+  // Crée le favori « Maison » aux coordonnées du domicile connues de Jeedom, sans adresse à saisir
+  public function addHomePlace() {
+    $home = self::jeedomHome();
+    if ($home === null) {
+      throw new Exception(__('Les coordonnées du domicile ne sont pas renseignées dans la configuration générale de Jeedom', __FILE__));
+    }
+    $places = $this->getPlaces();
+    foreach ($places as $place) {
+      if (!empty($place['favorite']) && self::distanceMeters($home[0], $home[1], $place['lat'], $place['lng']) <= self::PLACE_RADIUS) {
+        throw new Exception(__('Un favori existe déjà à cet endroit', __FILE__));
+      }
+    }
+    $places[] = array('lat' => $home[0], 'lng' => $home[1], 'address' => '', 'name' => __('Maison', __FILE__), 'favorite' => true);
+    $this->savePlaces($places);
+  }
+
+  // Enregistre les lieux, puis remet à jour la commande « Lieu » et la tuile si le véhicule est stationné
+  private function savePlaces($_places) {
+    config::save($this->placesKey(), json_encode(array_values(array_slice($_places, -self::PLACES_MAX)), JSON_UNESCAPED_UNICODE), __CLASS__);
     $lat = $this->getCmd('info', 'latitude');
     $lng = $this->getCmd('info', 'longitude');
     if (is_object($lat) && is_object($lng) && is_numeric($lat->execCmd()) && is_numeric($lng->execCmd())) {
@@ -1104,7 +1371,17 @@ class myskoda extends eqLogic {
     // Dernier jour où le véhicule a roulé (sur 90 jours) : la carte s'y ouvre quand le jour courant n'a aucun trajet
     $trips = $this->periods('moving', date('Y-m-d 00:00:00', time() - 90 * 86400), date('Y-m-d H:i:s'));
     $last = end($trips);
-    return array('places' => $places, 'now' => $now, 'lastTripDay' => ($last === false) ? null : substr($last[0], 0, 10));
+    // Le favori « Maison » peut être créé d'un clic si Jeedom connaît le domicile et qu'aucun favori n'y est déjà
+    $home = self::jeedomHome();
+    $homeAvailable = ($home !== null);
+    foreach ($places as $place) {
+      if ($home !== null && !empty($place['favorite']) && self::distanceMeters($home[0], $home[1], $place['lat'], $place['lng']) <= self::favoriteRadius()) {
+        $homeAvailable = false;
+      }
+    }
+    return array('places' => $places, 'now' => $now, 'lastTripDay' => ($last === false) ? null : substr($last[0], 0, 10),
+      'defaultRadius' => self::favoriteRadius(), 'homeAvailable' => $homeAvailable,
+      'colors' => self::placeColors(), 'defaultColor' => array_keys(self::$_placeColors)[0]);
   }
 
   // Valeurs d'une info historisée sur un intervalle, précédées de la valeur au début : liste de (date, valeur)
@@ -1320,6 +1597,8 @@ class myskoda extends eqLogic {
       $energy = ($capacity > 0 && $used !== null) ? round($capacity * $used / 100, 1) : null;
       $fromPosition = $this->positionAt($start);
       $toPosition = $ongoing ? null : $this->positionAt(date('Y-m-d H:i:s', strtotime($end) + 120));
+      $fromLabel = $this->placeAt($start);
+      $toLabel = $ongoing ? null : $this->placeAt(date('Y-m-d H:i:s', strtotime($end) + 120));
       $trips[] = array(
         'type' => 'trip',
         'start' => $start,
@@ -1331,8 +1610,11 @@ class myskoda extends eqLogic {
         'toPosition' => $toPosition,
         // Aller-retour : le véhicule est revenu se garer là d'où il était parti. Škoda ne donnant aucune position
         // en route, la carte n'a pas de trait à tracer et montre le lieu par un cercle.
+        // Deux lieux portant le même nom comptent pour un seul : la position transmise par la voiture peut s'écarter
+        // de plus de cent mètres d'un stationnement à l'autre au même endroit (constaté le 2026-10-07, 176 m).
         'roundTrip' => (is_array($fromPosition) && is_array($toPosition)
-          && self::distanceMeters($fromPosition[0], $fromPosition[1], $toPosition[0], $toPosition[1]) <= self::PLACE_RADIUS),
+          && (self::distanceMeters($fromPosition[0], $fromPosition[1], $toPosition[0], $toPosition[1]) <= self::PLACE_RADIUS
+            || ($fromLabel !== null && $fromLabel !== '' && $fromLabel === $toLabel))),
         // La position d'arrivée est écrite juste après la fin du trajet, dans la même lecture
         'to' => $ongoing ? null : $this->placeAt(date('Y-m-d H:i:s', strtotime($end) + 120)),
         'distance' => $distance,
@@ -1433,6 +1715,7 @@ class myskoda extends eqLogic {
       'fuel' => ($this->getKind() == 'fuel'),
       'mileage' => $value('mileage'),
       'updated' => $value('data_timestamp'),
+      'unavailableSince' => $value('unavailable_since'),
     );
   }
 
@@ -1600,6 +1883,11 @@ class myskoda extends eqLogic {
     $tags['#ms_image_class#'] = (strpos((string) $get('image'), 'iprenders.blob.core.windows.net') !== false) ? 'ms-render' : '';
     $tags['#ms_alert#'] = ($text('services_disabled') === null) ? '' : '<div class="ms-alert"><i class="fas fa-exclamation-triangle"></i> '
       . __('Données désactivées sur le véhicule', __FILE__) . ' : ' . $text('services_disabled') . '. ' . __('À vérifier dans l\'application MyŠkoda.', __FILE__) . '</div>';
+    if ($text('unavailable_since') !== null) {
+      $tags['#ms_alert#'] .= '<div class="ms-alert"><i class="fas fa-exclamation-triangle"></i> '
+        . __('Škoda ne fournit plus les données du véhicule depuis', __FILE__) . ' ' . self::tileDate($get('unavailable_since')) . '. '
+        . __('Les valeurs affichées sont les dernières reçues.', __FILE__) . '</div>';
+    }
 
     $tags['#ms_icons#'] = self::tileIcon($get('locked'), 'icon jeedom-lock-ferme', 'icon jeedom-lock-ouvert', __('Verrouillé', __FILE__), __('Déverrouillé', __FILE__))
       . self::tileIcon($get('doors_closed'), 'icon jeedom-porte-ferme', 'icon jeedom-porte-ouverte', __('Portes fermées', __FILE__), __('Porte ouverte', __FILE__))

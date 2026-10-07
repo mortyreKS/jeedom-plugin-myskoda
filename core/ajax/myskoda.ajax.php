@@ -34,6 +34,13 @@ try {
         ajax::success(array('id' => $eqLogic->getId(), 'name' => $eqLogic->getName()));
     }
 
+    if (init('action') == 'searchAddress') {
+        if (!isConnect('admin')) {
+            throw new Exception(__('401 - Accès non autorisé', __FILE__));
+        }
+        ajax::success(myskoda::searchAddress(init('address')));
+    }
+
     if (init('action') == 'getVersion') {
         ajax::success(myskoda::getVersionLabel());
     }
@@ -42,7 +49,9 @@ try {
         $vehicles = array();
         foreach (eqLogic::byType('myskoda', true) as $eqLogic) {
             if ($eqLogic->hasRight('r')) {
-                $vehicles[] = array('id' => $eqLogic->getId(), 'name' => $eqLogic->getHumanName(), 'kind' => $eqLogic->getKind(), 'energies' => $eqLogic->getEnergies(), 'real' => ($eqLogic->getConfiguration('vin') != ''));
+                $vehicles[] = array('id' => $eqLogic->getId(), 'name' => $eqLogic->getHumanName(), 'kind' => $eqLogic->getKind(), 'energies' => $eqLogic->getEnergies(), 'real' => ($eqLogic->getConfiguration('vin') != ''),
+                    // Nom court et image du véhicule, pour le reconnaître sur chaque fiche de trajet ou de recharge
+                    'short' => $eqLogic->getName(), 'image' => (strpos((string) $eqLogic->getImage(), 'https://') === 0) ? $eqLogic->getImage() : '');
             }
         }
         // Les véhicules réels d'abord : un équipement sans numéro de série n'est pas interrogé
@@ -52,17 +61,41 @@ try {
         ajax::success($vehicles);
     }
 
-    if (init('action') == 'getMap' || init('action') == 'renamePlace') {
+    if (in_array(init('action'), array('getMap', 'renamePlace', 'deletePlace', 'addHomePlace', 'addPlace', 'movePlace', 'colorPlace', 'reorderPlace', 'rankPlace'))) {
         $eqLogic = myskoda::byId(init('id'));
         if (!is_object($eqLogic) || $eqLogic->getEqType_name() != 'myskoda' || !$eqLogic->hasRight('r')) {
             throw new Exception(__('Véhicule inconnu', __FILE__));
         }
         $eqLogic->setEnergy(init('energy'));
+        if (init('action') != 'getMap' && !isConnect('admin')) {
+            throw new Exception(__('401 - Accès non autorisé', __FILE__));
+        }
         if (init('action') == 'renamePlace') {
-            if (!isConnect('admin')) {
-                throw new Exception(__('401 - Accès non autorisé', __FILE__));
-            }
-            $eqLogic->renamePlace((int) init('index'), init('name'), init('price'));
+            // « favorite » et « radius » absents de la demande : le lieu garde son état
+            $eqLogic->renamePlace((int) init('index'), init('name'), init('price'),
+                (init('favorite', '') === '') ? null : (init('favorite') == 1), (init('favorite', '') === '') ? null : init('radius'),
+                (init('withAddress') == 1) ? init('address') : null);
+        }
+        if (init('action') == 'addPlace') {
+            $eqLogic->addPlace(init('lat'), init('lng'), init('name'), init('address'), init('radius'));
+        }
+        if (init('action') == 'colorPlace') {
+            $eqLogic->colorPlace((int) init('index'), init('color'));
+        }
+        if (init('action') == 'reorderPlace') {
+            $eqLogic->reorderPlace((int) init('index'), (int) init('direction'));
+        }
+        if (init('action') == 'rankPlace') {
+            $eqLogic->rankPlace((int) init('index'), (int) init('rank'));
+        }
+        if (init('action') == 'movePlace') {
+            $eqLogic->movePlace((int) init('index'), init('lat'), init('lng'));
+        }
+        if (init('action') == 'deletePlace') {
+            $eqLogic->deletePlace((int) init('index'));
+        }
+        if (init('action') == 'addHomePlace') {
+            $eqLogic->addHomePlace();
         }
         $map = $eqLogic->getMap();
         $map['canEdit'] = isConnect('admin');

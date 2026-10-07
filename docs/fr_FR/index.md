@@ -16,7 +16,7 @@ Cet écran liste vos clés (cinq au plus), permet d'en créer une et affiche le 
 
 ### 2. Saisir la clé dans Jeedom
 
-Dans la configuration du plugin, collez la clé. Les deux rythmes de lecture (à l'arrêt, et en déplacement ou en charge) peuvent rester tels quels.
+Dans la configuration du plugin, collez la clé. Les deux rythmes de lecture (à l'arrêt et en charge, et en déplacement) peuvent rester tels quels.
 
 ### 3. Ajouter le véhicule
 
@@ -69,7 +69,7 @@ Avec plusieurs véhicules, une rangée de boutons en haut du journal choisit cel
 - **Véhicule** : la tuile de la voiture choisie, avec ses boutons, comme sur le dashboard.
 - En haut à droite, pour les administrateurs : raccourcis vers les équipements et vers la configuration du plugin.
 - **Journée** : état actuel du véhicule (stationné, en déplacement ou en charge, depuis quand et où), résumé du jour (temps à l'arrêt ; trajets : durée, distance, vitesse moyenne, consommation ; recharges : durée, autonomie et énergie gagnées, coût), courbe de la batterie et frise de 0 h à 24 h, puis une carte par trajet et par recharge avec les lieux. Les flèches passent d'un jour à l'autre.
-- **Carte** : lieux de stationnement connus, position actuelle, trajets et recharges du jour choisi. Si la voiture n'a pas roulé aujourd'hui, la carte s'ouvre sur le dernier jour où elle a roulé. Sous la carte, la liste des lieux permet de leur donner un nom (Maison, Travail…). Le fond de carte vient d'OpenStreetMap : pour l'afficher, votre navigateur interroge les serveurs d'OpenStreetMap, qui voient donc la zone regardée. Rien d'autre n'est transmis, et aucune donnée du véhicule ne leur est envoyée par le plugin.
+- **Carte** : lieux de stationnement connus, position actuelle, trajets et recharges du jour choisi. Si la voiture n'a pas roulé aujourd'hui, la carte s'ouvre sur le dernier jour où elle a roulé. Les lieux se gèrent dans l'onglet « Lieux ». Le fond de carte vient d'OpenStreetMap : pour l'afficher, votre navigateur interroge les serveurs d'OpenStreetMap, qui voient donc la zone regardée. Rien d'autre n'est transmis, et aucune donnée du véhicule ne leur est envoyée par le plugin.
 - **Trajets** : tableau sur une période, avec lieux de départ et d'arrivée.
 - **Recharges** (électrique) : tableau sur une période, avec totaux par mois, puissance moyenne, prix et coût.
 - **Pleins** (thermique) : un plein est reconnu quand le niveau de carburant remonte d'au moins 5 points entre deux lectures ; tableau avec lieu, quantité, prix et coût.
@@ -82,6 +82,22 @@ Trajets et recharges sont reconstitués à partir de l'historique Jeedom des com
 **Arrêts courts.** Škoda ne donne que le dernier état connu du véhicule, sans historique. Un arrêt de quelques minutes (déposer quelqu'un, retirer un colis) qui commence et se termine entre deux lectures du plugin n'est donc pas vu : plusieurs petits trajets enchaînés apparaissent comme un seul, dont la distance et les heures de départ et d'arrivée restent justes. En déplacement, le plugin lit toutes les 5 minutes par défaut ; ce rythme se règle dans la configuration du plugin, dans la limite des 20 requêtes par heure imposée par Škoda. **Ne décochez pas la case « Historiser » des commandes du plugin, et ne modifiez pas leur mode d'historisation** : le journal de bord est entièrement tiré de l'historique Jeedom. Sans lui, il reste vide, et ce qui n'a pas été historisé ne peut pas être reconstitué après coup. Les commandes nécessaires sont : En déplacement, Kilométrage, Latitude, Longitude, Batterie et Autonomie électrique (ou Carburant et Autonomie carburant), En charge et Puissance de charge. Si l'une d'elles n'est plus historisée, le journal l'indique en haut de page. Le volume est faible : une valeur n'est enregistrée que lorsque la voiture envoie un nouveau relevé.
 
 Les lieux sont les adresses de stationnement données par Škoda, que le plugin mémorise au fil des arrêts. Škoda ne donne aucune position pendant qu'un véhicule roule : sur la carte, un trajet est un trait droit entre son départ et son arrivée, pas son parcours. Pour la même raison, un aller-retour sans arrêt (la voiture revient se garer là d'où elle est partie) n'a pas de trait : il est signalé par un cercle bleu en pointillés autour du lieu, et sa distance est celle du compteur.
+
+Deux stationnements à moins de 60 mètres l'un de l'autre sont le même lieu. La position transmise par la voiture n'est pas toujours exacte : il arrive qu'elle s'écarte de plus de cent mètres alors que la voiture est garée au même endroit, ce qui crée un second lieu.
+
+**Onglet « Lieux » : vos lieux favoris.** Cet onglet du journal de bord rassemble tout ce qui concerne les lieux : leur carte, l'ajout d'un favori et la liste des lieux connus. Un favori (Maison, Travail, École…) rattache à lui tout stationnement fait dans son rayon, et son adresse ne change plus.
+
+Pour ajouter un favori, donnez-lui un nom, puis placez son point de l'une de ces façons : écrivez son adresse et cliquez sur « Chercher l'adresse », ou cliquez directement sur la carte à l'endroit voulu (un nouveau clic corrige le point). L'adresse que vous écrivez est celle qui sera affichée : c'est le moyen d'avoir la bonne adresse quand celle que Škoda donne pour votre domicile est fausse. La recherche d'adresse est faite par votre Jeedom auprès du service d'OpenStreetMap, uniquement quand vous cliquez sur le bouton ; le clic sur la carte n'envoie rien.
+
+Pour revoir un lieu déjà enregistré, cliquez sur son point sur la carte ou sur le bouton en forme de cible au début de sa ligne : la carte s'en approche et montre son emplacement en rouge. Un clic sur la carte le déplace ; « Enregistrer cette position » valide, « Annuler » laisse le lieu tel quel.
+
+La liste est en deux parties. « Mes favoris » vient en premier : vous les rangez dans l'ordre que vous voulez en les glissant par la poignée à traits horizontaux, au début de la ligne, ou avec les flèches en bout de ligne, et chaque favori a sa couleur, choisie dans une liste et reprise sur les cartes du journal (Maison en vert, École en rouge…). « Autres lieux où la voiture s'est arrêtée » vient ensuite, les plus récents en tête ; au-delà de six, les plus anciens sont repliés derrière un bouton.
+
+Chaque ligne montre l'essentiel : la couleur, l'étoile, le nom, l'adresse et la cible qui ouvre le lieu sur la carte. Les réglages plus rares suivent : le prix du kWh ou du litre à cet endroit, le rayon et la couleur d'un favori, la suppression. Sur un écran d'ordinateur ils sont toujours visibles, à la suite sur la ligne ; sur un téléphone, ils se déplient par la flèche en bout de ligne.
+
+Un lieu déjà connu devient favori en lui donnant un nom et en cliquant sur son étoile, qui passe au jaune ; un second clic le retire des favoris. Son adresse se corrige dans la liste ; une adresse corrigée n'est plus remplacée par celle de Škoda. Le rayon général des favoris se règle dans la configuration du plugin (200 mètres par défaut) ; chaque favori peut avoir le sien, plus large à la campagne ou pour un parking souterrain où la position est imprécise, plus serré en ville. Si Jeedom connaît les coordonnées de votre domicile (configuration générale de Jeedom), un bouton propose de créer le favori « Maison » à cet endroit, sans rien saisir.
+
+La case « Nom » propose la liste des noms déjà donnés : pour rattacher un autre lieu à un favori, choisissez son nom dans cette liste plutôt que de le retaper. Deux lieux portant le même nom comptent pour un seul. La croix supprime un lieu créé par erreur ; les trajets déjà enregistrés ne sont pas modifiés.
 
 Le nom donné à un lieu remplace son adresse dans le journal et sur la tuile. La commande « Lieu » le porte aussi : elle sert de déclencheur ou de condition dans un scénario (par exemple « Lieu » égal à « Maison »).
 
@@ -103,9 +119,13 @@ Pour chacun, indiquez l'échéance (kilométrage au compteur et date), ou recopi
 
 Indiquez la version du plugin (affichée dans sa configuration et à droite des onglets du journal de bord), votre modèle de véhicule, et joignez le log `myskoda` au niveau Debug (configuration du plugin, cadre « Logs et surveillance », puis menu Analyse → Logs). Ce log contient les réponses de Škoda, dont le plugin retire le numéro de série, la plaque, l'adresse et les coordonnées de stationnement avant de les écrire. La clé API et le code S-PIN n'y figurent jamais. Le nom que vous avez donné à l'équipement, lui, y apparaît.
 
+## Données momentanément indisponibles chez Škoda
+
+Il arrive que Škoda réponde sans aucune donnée du véhicule, chaque rubrique étant « indisponible » : cela s'observe notamment pendant qu'un véhicule roule. Le plugin garde alors les dernières valeurs reçues et l'indique sur la tuile et en haut du journal de bord, avec l'heure depuis laquelle cela dure (commande « Données Škoda indisponibles depuis »). Rien n'est à faire : un trajet ou une recharge en cours se termine à la bonne heure dès que Škoda répond de nouveau, parce que la voiture date elle-même ses relevés.
+
 ## Limites
 
-- Škoda autorise 20 requêtes par heure et par véhicule, lectures et commandes comprises. Avec les rythmes par défaut (10 minutes à l'arrêt, 5 minutes en déplacement ou en charge), il reste au moins huit requêtes par heure pour les commandes, et le plugin garde toujours les trois dernières pour elles ; les commandes « Requêtes restantes » et « Expiration de la clé » permettent de suivre le quota et la validité de la clé.
+- Škoda autorise 20 requêtes par heure et par véhicule, lectures et commandes comprises. Le plugin lit toutes les 10 minutes à l'arrêt et pendant une recharge (6 requêtes par heure), et toutes les 5 minutes en déplacement (12 par heure). **Chaque commande coûte deux requêtes** : la commande, puis la relecture qui suit une minute après pour en voir l'effet. La commande « Rafraîchir » en coûte une. À l'arrêt ou en charge, il reste donc de quoi envoyer six ou sept commandes par heure ; au-delà, Škoda refuse jusqu'à l'heure suivante. Dans un scénario, évitez d'appeler « Rafraîchir » ou une commande en boucle : les valeurs se mettent déjà à jour toutes seules. Le plugin garde toujours les trois dernières requêtes de l'heure pour les commandes ; « Requêtes restantes » et « Expiration de la clé » permettent de suivre le quota et la validité de la clé.
 - L'API ne réveille pas le véhicule : les valeurs sont celles de sa dernière remontée (commande « Dernière remontée du véhicule »).
 - La clé expire : le plugin le signale dans le centre de messages de Jeedom.
 - Non proposés par l'API : verrouillage à distance, klaxon et appel de phares, état porte par porte.

@@ -46,6 +46,11 @@ var myskodaJournal = (function() {
     '.msj-hours { display: flex; justify-content: space-between; font-size: 11px; opacity: .7; margin-bottom: 12px; }',
     '.msj-card { display: flex; margin-bottom: 8px; border-radius: 8px; overflow: hidden; background: rgba(127,127,127,.14); }',
     '.msj-card .msj-icon { flex: 0 0 56px; height: auto; border-radius: 0; }',
+    // Vignette de taille fixe, quelle que soit la hauteur de la fiche : la photo de Škoda montre la voiture petite au
+    // milieu d'un grand vide, elle est donc agrandie dans son cadre
+    '.msj-photo { flex: 0 0 104px; height: 58px; align-self: center; margin-left: 8px; border-radius: 6px; overflow: hidden; background: #fff; }',
+    '.msj-photo img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.9); }',
+    '@media (max-width: 520px) { .msj-photo { flex-basis: 78px; height: 44px; margin-left: 6px; } }',
     '.msj-card-body { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 8px 14px; align-items: center; min-width: 0; }',
     '.msj-card-main { flex: 1 1 240px; min-width: 0; }',
     '.msj-card-main b { font-size: 15px; }',
@@ -63,7 +68,21 @@ var myskodaJournal = (function() {
     '.msj-map { height: 440px; border-radius: 8px; margin-bottom: 10px; z-index: 0; }',
     '.msj-map .leaflet-control-attribution, .msj-map .leaflet-control-attribution a { font-size: 11px; line-height: 1.4; font-weight: normal; text-shadow: none; }',
     '.msj-place { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(127,127,127,.25); }',
-    '.msj-place input { flex: 0 1 200px; height: 30px; padding: 2px 8px; }',
+    '.msj-place input[type=text] { flex: 0 1 200px; height: 30px; padding: 2px 8px; }',
+    '.msj-place input[type=checkbox] { flex: 0 0 auto; margin: 0; }',
+    // Ligne d'un lieu : le nom reste court, l'adresse prend la place ; les petits réglages sont dans la partie dépliable
+    '.msj-place input.msj-name { flex: 1 1 150px; max-width: 240px; }',
+    '.msj-place input.msj-address { flex: 3 1 260px; }',
+    '.msj-place input.msj-small { flex: 0 0 96px; width: 96px; }',
+    '.msj-star { flex: 0 0 auto; cursor: pointer; font-size: 19px; padding: 2px 3px; color: rgba(127,127,127,.75); }',
+    '.msj-star.msj-star-on { color: #f1c40f; }',
+    '.msj-place-more { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 4px 0 6px 28px; }',
+    '.msj-field { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: normal; white-space: nowrap; }',
+    '.msj-field select { height: 30px; padding: 2px 6px; }',
+    '@media (max-width: 520px) { .msj-place input.msj-name { max-width: none; } .msj-place input.msj-address { order: 10; flex-basis: 100%; } .msj-place-more { order: 11; padding-left: 0; } }',
+    // Sur un écran large, la place ne manque pas : les réglages sont toujours visibles, à la suite sur la ligne, sans clic.
+    // Le repli ne sert que sur les écrans étroits.
+    '@media (min-width: 900px) { .msj-place-more { display: flex !important; flex: 0 1 auto; padding: 0; margin-left: auto; } .msj-place .msj-toggle { display: none; } .msj-place input.msj-address { flex: 2 1 220px; } }',
     '.msj-place input.msj-price { flex: 0 1 190px; }',
     '.msj-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 14px; }',
     '.msj-kpi { border-radius: 8px; background: rgba(127,127,127,.14); padding: 10px 14px; }',
@@ -72,7 +91,10 @@ var myskodaJournal = (function() {
     '.msj-chart-title { font-weight: bold; margin-bottom: 4px; }',
     '.msj-bars { display: block; width: 100%; height: 90px; border-bottom: 1px solid rgba(127,127,127,.5); }',
     '.msj-tiles { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; position: relative; }',
-    '.msj-tiles .eqLogic-widget { position: relative !important; left: auto !important; top: auto !important; margin: 0 !important; max-width: 100%; }',
+    // La tuile du dashboard a une largeur fixe ; dans le journal elle ne doit jamais dépasser l'écran (version ordinateur
+    // ouverte sur un téléphone, par exemple depuis une application tierce) : son conteneur est borné, et elle avec.
+    '.msj-tiles > div { max-width: 100%; min-width: 0; }',
+    '.msj-tiles .eqLogic-widget { position: relative !important; left: auto !important; top: auto !important; margin: 0 !important; max-width: 100% !important; box-sizing: border-box; }',
     '.msj-note { font-size: 12px; opacity: .75; margin-top: 10px; }'
   ].join('\n')
 
@@ -194,7 +216,7 @@ var myskodaJournal = (function() {
     }
     var U = WORDS.electric
     var vehicleBar = el('div', 'msj-bar')
-    var state = { tab: 'car', day: isoDate(new Date()), start: isoDate(new Date(Date.now() - 30 * 86400000)), end: isoDate(new Date()) }
+    var state = { tab: 'car', day: isoDate(new Date()), start: isoDate(new Date(Date.now() - 30 * 86400000)), end: isoDate(new Date()), openPlaces: {} }
     var bar = el('div', 'msj-bar')
     var vehicle = el('select')
     var tabs = {}
@@ -203,7 +225,7 @@ var myskodaJournal = (function() {
     var message = el('div', 'msj-message')
     var content = el('div')
     bar.appendChild(vehicle)
-    ;[['car', '{{Véhicule}}'], ['day', '{{Journée}}'], ['map', '{{Carte}}'], ['trips', '{{Trajets}}'], ['charges', '{{Recharges}}'], ['stats', '{{Statistiques}}']].forEach(function(tab) {
+    ;[['car', '{{Véhicule}}'], ['day', '{{Journée}}'], ['map', '{{Carte}}'], ['places', '{{Lieux}}'], ['trips', '{{Trajets}}'], ['charges', '{{Recharges}}'], ['stats', '{{Statistiques}}']].forEach(function(tab) {
       tabs[tab[0]] = el('span', 'msj-btn', tab[1])
       tabs[tab[0]].addEventListener('click', function() {
         state.tab = tab[0]
@@ -303,6 +325,12 @@ var myskodaJournal = (function() {
     // Le journal est tiré de l'historique Jeedom : si l'historisation d'une commande nécessaire a été décochée,
     // il reste vide sans raison apparente. L'avertissement nomme les commandes à recocher.
     function warnHistory(result) {
+      if (result.now && result.now.unavailableSince) {
+        var down = el('div', 'msj-message', '{{Škoda ne fournit plus les données du véhicule depuis}} ' + hour(result.now.unavailableSince)
+          + '. {{Les valeurs sont les dernières reçues ; un trajet ou une recharge en cours se terminera à la bonne heure quand Škoda répondra de nouveau.}}')
+        down.style.cssText = 'padding:8px 10px;border-radius:4px;background:rgba(240,173,78,0.18);opacity:1;'
+        content.appendChild(down)
+      }
       if (!result.notHistorized || result.notHistorized.length == 0) {
         return
       }
@@ -337,12 +365,36 @@ var myskodaJournal = (function() {
       return row
     }
 
+    // Véhicule choisi en haut du journal ; null tant que la liste n'est pas chargée
+    function currentVehicle() {
+      for (var i = 0; i < vehicles.length; i++) {
+        if (String(vehicles[i].id) == vehicle.value) {
+          return vehicles[i]
+        }
+      }
+      return null
+    }
+
     function card(row) {
       var isTrip = (row.type == 'trip')
       var node = el('div', 'msj-card')
       var badge = el('div', 'msj-icon ' + (isTrip ? 'msj-trip' : 'msj-charge'))
-      badge.appendChild(el('i', isTrip ? 'fas fa-car-side' : U.icon))
+      var pictogram = el('i', isTrip ? 'fas fa-car-side' : U.icon)
+      badge.appendChild(pictogram)
       node.appendChild(badge)
+      // Avec plusieurs véhicules, chaque fiche montre celui qu'elle concerne : sa photo, à côté du pictogramme coloré
+      // (bleu pour un trajet, rouge pour une recharge ou un plein). Sans photo, son nom figure dans la fiche.
+      var car = currentVehicle()
+      if (car && car.image) {
+        var photo = el('div', 'msj-photo')
+        var picture = el('img')
+        picture.alt = car.short
+        picture.title = car.short
+        picture.onerror = function() { photo.style.display = 'none' }
+        picture.src = car.image
+        photo.appendChild(picture)
+        node.appendChild(photo)
+      }
       var body = el('div', 'msj-card-body')
       var main = el('div', 'msj-card-main')
       // Un plein est un instant, pas une période
@@ -353,6 +405,9 @@ var myskodaJournal = (function() {
         main.appendChild(el('div', null, row.place || EMPTY))
       }
       main.appendChild(el('div', null, U.level + ' ' + battery(row)))
+      if (car && vehicles.length > 1) {
+        main.appendChild(el('div', 'msj-note', car.short))
+      }
       body.appendChild(main)
       var figures = el('div', 'msj-card-figures')
       if (isTrip) {
@@ -535,13 +590,17 @@ var myskodaJournal = (function() {
       }
       var holder = el('div', 'msj-map')
       content.appendChild(holder)
-      content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Point vert : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Cercle bleu en pointillés : aller-retour revenu à son point de départ. Points rouges : recharges ou pleins du jour choisi.}}'))
+      content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Points de couleur : vos favoris. Point vert cerclé de blanc : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Cercle bleu en pointillés : aller-retour revenu à son point de départ. Points rouges : recharges ou pleins du jour choisi.}}'))
       loadLeaflet(function() {
         var chart = L.map(holder)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(chart)
         var bounds = []
         map.places.forEach(function(place) {
-          L.circleMarker([place.lat, place.lng], { radius: 7, color: '#6f7a80', fillOpacity: 0.8 }).addTo(chart)
+          // Un favori garde sur cette carte la couleur que l'utilisateur lui a donnée
+          var style = place.favorite
+            ? { radius: 8, color: place.color || map.defaultColor, weight: 2, fillColor: place.color || map.defaultColor, fillOpacity: 1 }
+            : { radius: 7, color: '#6f7a80', fillOpacity: 0.8 }
+          L.circleMarker([place.lat, place.lng], style).addTo(chart)
             .bindPopup(el('span', null, (place.name ? place.name + ' — ' : '') + place.address))
           bounds.push([place.lat, place.lng])
         })
@@ -601,46 +660,452 @@ var myskodaJournal = (function() {
         }
       })
 
-      content.appendChild(el('h4', null, '{{Lieux de stationnement}}'))
-      if (map.canEdit && map.places.length > 0) {
-        content.appendChild(el('div', 'msj-note', U.fuel
-          ? '{{Les deux cases sont facultatives. Nom : pour voir « Maison » ou « Travail » à la place de l\'adresse. Prix : à remplir seulement pour un lieu où vous faites le plein, s\'il diffère du prix général.}}'
-          : '{{Les deux cases sont facultatives. Nom : pour voir « Maison » ou « Travail » à la place de l\'adresse. Prix : à remplir seulement pour un lieu où vous rechargez, s\'il diffère du prix général.}}'))
+      // Sous la carte, le détail de ce qu'elle montre : les trajets et les recharges ou pleins du jour choisi
+      var rows = day.trips.concat(day.charges).sort(function(a, b) { return a.start < b.start ? 1 : -1 })
+      content.appendChild(el('h4', null, '{{Trajets}} {{et}} ' + U.refillTab.toLowerCase() + ' {{de ce jour}}'))
+      if (rows.length == 0) {
+        content.appendChild(el('div', 'msj-message', '{{Rien ce jour-là.}}'))
       }
-      if (map.places.length == 0) {
-        content.appendChild(el('div', 'msj-message', '{{Aucun lieu connu pour le moment : ils s\'ajoutent à chaque stationnement.}}'))
-      }
-      map.places.forEach(function(place, index) {
-        var row = el('div', 'msj-place')
-        if (map.canEdit) {
-          var name = el('input')
-          name.type = 'text'
-          name.value = place.name || ''
-          name.placeholder = '{{Nom (Maison, Travail…)}}'
-          var price = el('input', 'msj-price')
-          price.type = 'text'
-          price.value = place.price ? String(place.price).replace('.', ',') : ''
-          // Case vide : c'est le prix général de la configuration qui s'applique, il est donc montré en filigrane
-          price.placeholder = (map.price > 0) ? show(map.price, U.price, 2) + ' ({{prix général}})' : '{{Prix}} (' + U.price + ')'
-          price.title = U.fuel ? '{{Facultatif : prix du litre à cet endroit, si vous y faites le plein}}' : '{{Facultatif : prix du kWh à cet endroit, si vous y rechargez}}'
-          name.title = '{{Facultatif : nom donné à ce lieu, par exemple Maison ou Travail}}'
-          var save = function() {
-            request({ action: 'renamePlace', id: vehicle.value, energy: state.energy, index: index, name: name.value, price: price.value }, function() {
-              message.textContent = '{{Lieu enregistré.}}'
-            }, fail)
-          }
-          name.addEventListener('change', save)
-          price.addEventListener('change', save)
-          row.appendChild(name)
-          row.appendChild(price)
-        } else if (place.name) {
-          row.appendChild(el('b', null, place.name))
-        }
-        row.appendChild(el('span', null, place.address))
-        content.appendChild(row)
+      rows.forEach(function(row) { content.appendChild(card(row)) })
+
+      // La gestion des lieux (noms, favoris, adresses) a sa propre page
+      var manage = el('span', 'msj-btn')
+      manage.appendChild(el('i', 'fas fa-map-marker-alt'))
+      manage.appendChild(document.createTextNode(' {{Gérer les lieux et les favoris}}'))
+      manage.addEventListener('click', function() {
+        state.tab = 'places'
+        refresh()
       })
-      if (map.canEdit && map.places.length > 0) {
-        content.appendChild(el('div', 'msj-note', '{{Le nom d\'un lieu remplace son adresse dans le journal, sur la tuile et dans la commande « Lieu », utilisable dans les scénarios. Le prix saisi sur un lieu s\'applique aux recharges ou aux pleins faits à cet endroit ; ailleurs, c\'est le prix de la configuration du plugin.}}'))
+      content.appendChild(manage)
+    }
+
+    // Page « Lieux » : carte des lieux, ajout d'un favori par son adresse ou par un clic sur la carte, liste à gérer
+    function renderPlaces(map) {
+      // La page est redessinée après chaque modification. Sans précaution elle se vide un instant et le navigateur
+      // remonte tout en haut : la hauteur est donc tenue pendant le changement, et la position de lecture remise.
+      var reload = function(text) {
+        request({ action: 'getMap', id: vehicle.value, energy: state.energy }, function(fresh) {
+          var positions = []
+          for (var node = content; node; node = node.parentElement) {
+            if (node.scrollTop > 0) {
+              positions.push([node, node.scrollTop])
+            }
+          }
+          var pageY = window.pageYOffset
+          content.style.minHeight = content.offsetHeight + 'px'
+          content.innerHTML = ''
+          renderPlaces(fresh)
+          message.textContent = text
+          positions.forEach(function(saved) { saved[0].scrollTop = saved[1] })
+          window.scrollTo(0, pageY)
+          content.style.minHeight = ''
+        }, fail)
+      }
+      var refuse = function(text) {
+        message.textContent = text
+        message.scrollIntoView({ block: 'center' })
+      }
+      content.appendChild(el('div', 'msj-note', '{{Les lieux où la voiture se gare sont mémorisés automatiquement. Ici, vous leur donnez un nom, vous corrigez leur adresse, et vous créez vos lieux favoris (Maison, Travail, École…) : tout stationnement fait dans le rayon d\'un favori lui est rattaché, même si la position transmise par la voiture s\'écarte un peu.}}'))
+
+      var holder = el('div', 'msj-map')
+      content.appendChild(holder)
+      var chart = null
+      var pending = null
+      var marker = null
+      var setPoint = function(lat, lng, zoom) {
+        pending = [lat, lng]
+        if (!chart) {
+          return
+        }
+        if (marker) {
+          marker.remove()
+        }
+        marker = L.circleMarker(pending, { radius: 10, color: '#d9534f', weight: 3, fillColor: '#d9534f', fillOpacity: 0.6 }).addTo(chart)
+        if (zoom) {
+          chart.setView(pending, 17)
+        }
+        if (editing === null) {
+          pointText.textContent = '{{Point placé. Cliquez ailleurs sur la carte pour le déplacer.}}'
+          add.style.opacity = '1'
+        }
+      }
+      // Lieu existant en cours de retouche : son point passe en rouge, un clic sur la carte le déplace, puis on enregistre
+      var editing = null
+      var editBar = el('div', 'msj-place')
+      editBar.style.display = 'none'
+      var startEdit = function(index) {
+        if (!map.canEdit || !chart) {
+          return
+        }
+        editing = index
+        var place = map.places[index]
+        setPoint(place.lat, place.lng, true)
+        editBar.innerHTML = ''
+        editBar.style.display = ''
+        editBar.appendChild(el('b', null, (place.name || place.address || '{{Lieu}}')))
+        editBar.appendChild(el('span', null, '{{Le point rouge est l\'emplacement enregistré. Cliquez sur la carte pour le déplacer, puis enregistrez.}}'))
+        var keep = el('span', 'msj-btn')
+        keep.appendChild(el('i', 'fas fa-check'))
+        keep.appendChild(document.createTextNode(' {{Enregistrer cette position}}'))
+        keep.addEventListener('click', function() {
+          request({ action: 'movePlace', id: vehicle.value, energy: state.energy, index: index, lat: pending[0], lng: pending[1] }, function() { reload('{{Position enregistrée.}}') }, refuse)
+        })
+        var cancel = el('span', 'msj-btn', '{{Annuler}}')
+        cancel.addEventListener('click', function() { reload('') })
+        editBar.appendChild(keep)
+        editBar.appendChild(cancel)
+        holder.scrollIntoView({ block: 'start' })
+      }
+      loadLeaflet(function() {
+        chart = L.map(holder)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(chart)
+        var bounds = []
+        map.places.forEach(function(place, index) {
+          var point
+          if (place.favorite) {
+            // Favori : son point, et le cercle de son rayon (le cercle laisse passer les clics vers la carte)
+            var tint = place.color || map.defaultColor
+            L.circle([place.lat, place.lng], { radius: place.radius || map.defaultRadius, color: tint, weight: 2, fillOpacity: 0.12, interactive: false }).addTo(chart)
+            point = L.circleMarker([place.lat, place.lng], { radius: 8, color: tint, weight: 2, fillColor: tint, fillOpacity: 1 }).addTo(chart)
+          } else {
+            point = L.circleMarker([place.lat, place.lng], { radius: 7, color: '#6f7a80', fillOpacity: 0.8 }).addTo(chart)
+          }
+          point.bindTooltip((place.name ? place.name + ' — ' : '') + place.address)
+          // Un clic sur un lieu l'ouvre pour le voir de près et, au besoin, le déplacer
+          point.on('click', function(event) {
+            L.DomEvent.stopPropagation(event)
+            startEdit(index)
+          })
+          bounds.push([place.lat, place.lng])
+        })
+        if (map.now.position && map.now.state != 'trip') {
+          L.circleMarker(map.now.position, { radius: 9, color: '#fff', weight: 3, fillColor: '#5cb85c', fillOpacity: 1 }).addTo(chart)
+            .bindPopup(el('span', null, map.now.name))
+          bounds.push(map.now.position)
+        }
+        var frame = function() {
+          if (bounds.length > 0) {
+            chart.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 })
+          } else {
+            chart.setView([46.6, 2.4], 5)
+          }
+        }
+        frame()
+        setTimeout(function() {
+          if (document.body.contains(holder)) {
+            chart.invalidateSize()
+            if (!pending) {
+              frame()
+            }
+          }
+        }, 300)
+        if (map.canEdit) {
+          chart.on('click', function(event) {
+            setPoint(event.latlng.lat, event.latlng.lng, false)
+          })
+        }
+      })
+      content.appendChild(el('div', 'msj-note', '{{Points de couleur entourés d\'un cercle : vos favoris et leur rayon. Points gris : les autres lieux. Point vert cerclé de blanc : la voiture. Cliquez sur un lieu, ici ou dans la liste, pour le voir de près et affiner son emplacement.}}'))
+      content.appendChild(editBar)
+
+      // Noms déjà donnés, proposés dans chaque case « Nom » : on choisit dans la liste au lieu de retaper
+      var names = el('datalist')
+      names.id = 'msj-names-' + vehicle.value
+      var known = {}
+      map.places.forEach(function(place) {
+        if (place.name && !known[place.name]) {
+          known[place.name] = true
+          names.appendChild(el('option', null, place.name)).value = place.name
+        }
+      })
+      content.appendChild(names)
+
+      var pointText = el('span', null, '')
+      var add = el('span', 'msj-btn')
+      if (map.canEdit) {
+        content.appendChild(el('h4', null, '{{Ajouter un lieu favori}}'))
+        var form = el('div', 'msj-place')
+        var newName = el('input')
+        newName.type = 'text'
+        newName.placeholder = '{{Nom (Maison, Travail…)}}'
+        newName.setAttribute('list', names.id)
+        var newAddress = el('input')
+        newAddress.type = 'text'
+        newAddress.placeholder = '{{Adresse (numéro, rue, ville)}}'
+        newAddress.style.flex = '1 1 280px'
+        var search = el('span', 'msj-btn')
+        search.appendChild(el('i', 'fas fa-search'))
+        search.appendChild(document.createTextNode(' {{Chercher l\'adresse}}'))
+        search.title = '{{L\'adresse saisie est envoyée par votre Jeedom au service de recherche d\'OpenStreetMap pour être située sur la carte}}'
+        var newRadius = el('input')
+        newRadius.type = 'text'
+        newRadius.placeholder = '{{Rayon}} ' + map.defaultRadius + ' m'
+        newRadius.title = '{{Facultatif : rayon de ce favori en mètres. Vide : le rayon général réglé dans la configuration du plugin}}'
+        newRadius.style.flex = '0 0 120px'
+        var locate = function() {
+          if (newAddress.value.trim() == '') {
+            refuse('{{Saisissez une adresse, ou cliquez sur la carte pour placer le point.}}')
+            return
+          }
+          pointText.textContent = '{{Recherche en cours…}}'
+          // Recherche faite par la box auprès d'OpenStreetMap, seulement à la demande : le navigateur n'en a pas le droit
+          // (règle de sécurité de Jeedom), et rien n'est envoyé sans ce clic
+          request({ action: 'searchAddress', id: vehicle.value, energy: state.energy, address: newAddress.value.trim() }, function(found) {
+            setPoint(parseFloat(found.lat), parseFloat(found.lng), true)
+            pointText.textContent = '{{Adresse trouvée}} : ' + found.label + '. {{Si le point n\'est pas exactement au bon endroit, cliquez sur la carte pour le déplacer.}}'
+          }, function(error) {
+            pointText.textContent = error
+          })
+        }
+        search.addEventListener('click', locate)
+        newAddress.addEventListener('keydown', function(event) {
+          if (event.key == 'Enter') {
+            locate()
+          }
+        })
+        add.appendChild(el('i', 'fas fa-star'))
+        add.appendChild(document.createTextNode(' {{Enregistrer ce favori}}'))
+        add.style.opacity = '0.5'
+        add.addEventListener('click', function() {
+          if (!pending) {
+            refuse('{{Placez d\'abord le point : cherchez l\'adresse, ou cliquez sur la carte.}}')
+            return
+          }
+          request({ action: 'addPlace', id: vehicle.value, energy: state.energy, lat: pending[0], lng: pending[1], name: newName.value, address: newAddress.value, radius: newRadius.value },
+            function() { reload('{{Favori enregistré.}}') }, refuse)
+        })
+        ;[newName, newAddress, search, newRadius, add].forEach(function(node) { form.appendChild(node) })
+        content.appendChild(form)
+        pointText.className = 'msj-note'
+        pointText.style.display = 'block'
+        pointText.textContent = '{{Cherchez l\'adresse, ou cliquez directement sur la carte à l\'endroit voulu. Le point se corrige d\'un clic. L\'adresse que vous écrivez est celle qui sera affichée.}}'
+        content.appendChild(pointText)
+        if (map.homeAvailable) {
+          var home = el('span', 'msj-btn', '{{Créer le favori « Maison » aux coordonnées du domicile connues de Jeedom}}')
+          home.addEventListener('click', function() {
+            request({ action: 'addHomePlace', id: vehicle.value, energy: state.energy }, function() { reload('{{Favori « Maison » créé.}}') }, refuse)
+          })
+          content.appendChild(home)
+        }
+      }
+
+      // Une ligne de la liste : l'essentiel est visible (ordre, couleur, étoile, nom, adresse, cible), les réglages
+      // rarement touchés (prix, rayon, couleur, suppression) se déplient. « rank » et « count » : rang du favori parmi
+      // les favoris, pour le glisser-déposer et les flèches.
+      var buildRow = function(place, index, rank, count) {
+        var row = el('div', 'msj-place')
+        var dot = el('span', null, '')
+        dot.style.cssText = 'flex:0 0 14px;width:14px;height:14px;border-radius:50%;background:' + (place.favorite ? (place.color || map.defaultColor) : '#6f7a80') + ';'
+        if (!map.canEdit) {
+          row.appendChild(dot)
+          if (place.name) {
+            row.appendChild(el('b', null, place.name))
+          }
+          row.appendChild(el('span', null, place.address))
+          return row
+        }
+        var key = place.lat + ',' + place.lng
+        var name = el('input', 'msj-name')
+        name.type = 'text'
+        name.value = place.name || ''
+        name.placeholder = '{{Nom (Maison, Travail…)}}'
+        name.title = '{{Nom donné à ce lieu. La liste propose les noms déjà utilisés}}'
+        name.setAttribute('list', names.id)
+        var address = el('input', 'msj-address')
+        address.type = 'text'
+        address.value = place.address || ''
+        address.placeholder = '{{Adresse affichée}}'
+        address.title = '{{Adresse affichée pour ce lieu. Vous pouvez la corriger si celle donnée par Škoda est fausse}}'
+        var price = el('input', 'msj-small')
+        price.type = 'text'
+        price.value = place.price ? String(place.price).replace('.', ',') : ''
+        // Case vide : c'est le prix général de la configuration qui s'applique, il est donc montré en filigrane
+        price.placeholder = (map.price > 0) ? show(map.price, U.price, 2) : U.price
+        price.title = U.fuel ? '{{Facultatif : prix du litre à cet endroit, si vous y faites le plein. Vide : le prix général de la configuration du plugin}}' : '{{Facultatif : prix du kWh à cet endroit, si vous y rechargez. Vide : le prix général de la configuration du plugin}}'
+        var radius = el('input', 'msj-small')
+        radius.type = 'text'
+        radius.value = place.radius ? String(place.radius) : ''
+        radius.placeholder = map.defaultRadius + ' m'
+        radius.title = '{{Facultatif : rayon de ce favori en mètres. Vide : le rayon général réglé dans la configuration du plugin}}'
+        // Un seul envoi pour toute la ligne ; la page est rechargée quand la carte ou la liste de noms en dépend
+        var send = function(reloading, text, favorite) {
+          request({ action: 'renamePlace', id: vehicle.value, energy: state.energy, index: index, name: name.value, price: price.value, address: address.value, withAddress: 1, favorite: favorite ? 1 : 0, radius: radius.value }, function() {
+            if (reloading) {
+              reload(text)
+            } else {
+              message.textContent = text
+            }
+          }, refuse)
+        }
+        var isFavorite = !!place.favorite
+        name.addEventListener('change', function() { send(true, '{{Lieu enregistré.}}', isFavorite) })
+        address.addEventListener('change', function() { send(false, '{{Adresse enregistrée.}}', isFavorite) })
+        price.addEventListener('change', function() { send(false, '{{Prix enregistré.}}', isFavorite) })
+        radius.addEventListener('change', function() { send(true, '{{Rayon enregistré.}}', isFavorite) })
+
+        // Étoile : jaune pour un favori, grise sinon ; un clic bascule
+        var star = el('span', 'msj-star' + (isFavorite ? ' msj-star-on' : ''))
+        star.appendChild(el('i', isFavorite ? 'fas fa-star' : 'far fa-star'))
+        star.title = isFavorite ? '{{Favori : cliquez pour le retirer des favoris}}' : '{{Cliquez pour en faire un favori : tous les stationnements faits dans son rayon lui seront rattachés}}'
+        star.addEventListener('click', function() {
+          send(true, isFavorite ? '{{Ce lieu n\'est plus un favori.}}' : '{{Favori enregistré.}}', !isFavorite)
+        })
+
+        var locate = el('span', 'msj-btn')
+        locate.appendChild(el('i', 'fas fa-crosshairs'))
+        locate.title = '{{Voir ce lieu sur la carte et affiner son emplacement}}'
+        locate.style.cssText = 'padding:2px 9px;'
+        locate.addEventListener('click', function() { startEdit(index) })
+
+        // Réglages repliés ; un lieu qu'on vient de régler reste ouvert après le rechargement de la page
+        var more = el('div', 'msj-place-more')
+        more.style.display = state.openPlaces[key] ? '' : 'none'
+        var toggle = el('span', 'msj-btn msj-toggle')
+        var chevron = el('i', state.openPlaces[key] ? 'fas fa-chevron-up' : 'fas fa-chevron-down')
+        toggle.appendChild(chevron)
+        toggle.title = '{{Réglages de ce lieu : prix, rayon, couleur, suppression}}'
+        toggle.style.cssText = 'padding:2px 9px;'
+        toggle.addEventListener('click', function() {
+          state.openPlaces[key] = !state.openPlaces[key]
+          more.style.display = state.openPlaces[key] ? '' : 'none'
+          chevron.className = state.openPlaces[key] ? 'fas fa-chevron-up' : 'fas fa-chevron-down'
+        })
+        var field = function(label, node) {
+          var wrap = el('label', 'msj-field')
+          wrap.appendChild(el('span', null, label))
+          wrap.appendChild(node)
+          return wrap
+        }
+        more.appendChild(field(U.fuel ? '{{Prix du litre ici}}' : '{{Prix du kWh ici}}', price))
+
+        var head = [dot, star, name, address, locate, toggle]
+        if (isFavorite) {
+          more.appendChild(field('{{Rayon}}', radius))
+          // Couleur du favori, reprise sur les cartes
+          var color = el('select')
+          color.title = '{{Couleur de ce favori sur les cartes}}'
+          map.colors.forEach(function(choice) {
+            var option = el('option', null, choice[1])
+            option.value = choice[0]
+            option.selected = ((place.color || map.defaultColor) == choice[0])
+            color.appendChild(option)
+          })
+          color.addEventListener('change', function() {
+            request({ action: 'colorPlace', id: vehicle.value, energy: state.energy, index: index, color: color.value }, function() { reload('{{Couleur enregistrée.}}') }, refuse)
+          })
+          more.appendChild(field('{{Couleur}}', color))
+          // Ordre des favoris : flèches, en complément du glisser-déposer
+          ;[['fas fa-arrow-up', -1, '{{Monter ce favori dans la liste}}', rank > 0], ['fas fa-arrow-down', 1, '{{Descendre ce favori dans la liste}}', rank < count - 1]].forEach(function(arrow) {
+            var move = el('span', 'msj-btn')
+            move.appendChild(el('i', arrow[0]))
+            move.title = arrow[2]
+            // Une flèche sans objet (premier ou dernier favori) garde sa place, invisible, pour que les colonnes restent alignées
+            move.style.cssText = 'padding:2px 9px;' + (arrow[3] ? '' : 'visibility:hidden;')
+            move.addEventListener('click', function() {
+              request({ action: 'reorderPlace', id: vehicle.value, energy: state.energy, index: index, direction: arrow[1] }, function() { reload('') }, refuse)
+            })
+            more.appendChild(move)
+          })
+
+          // Poignée à traits horizontaux : on attrape le favori et on le glisse à sa place, à la souris comme au doigt
+          row.setAttribute('data-rank', rank)
+          var grip = el('span', null, '')
+          grip.appendChild(el('i', 'fas fa-grip-lines'))
+          grip.title = '{{Glisser pour changer l\'ordre des favoris}}'
+          grip.style.cssText = 'flex:0 0 auto;padding:4px 6px;cursor:grab;touch-action:none;opacity:.7;font-size:16px;' + (count > 1 ? '' : 'visibility:hidden;')
+          grip.addEventListener('pointerdown', function(start) {
+            start.preventDefault()
+            var target = rank
+            var rows = function() { return Array.prototype.slice.call(content.querySelectorAll('.msj-place[data-rank]')) }
+            var clear = function() { rows().forEach(function(other) { other.style.boxShadow = '' }) }
+            try {
+              grip.setPointerCapture(start.pointerId)
+            } catch (error) {}
+            row.style.opacity = '0.45'
+            grip.style.cursor = 'grabbing'
+            var move = function(event) {
+              var under = document.elementFromPoint(event.clientX, event.clientY)
+              var over = (under && under.closest) ? under.closest('.msj-place[data-rank]') : null
+              clear()
+              if (over) {
+                target = parseInt(over.getAttribute('data-rank'), 10)
+                // Trait bleu à l'endroit où le favori sera déposé
+                if (target != rank) {
+                  over.style.boxShadow = (target > rank) ? '0 3px 0 0 #2a7ab9' : '0 -3px 0 0 #2a7ab9'
+                }
+              }
+            }
+            var drop = function() {
+              grip.removeEventListener('pointermove', move)
+              grip.removeEventListener('pointerup', drop)
+              grip.removeEventListener('pointercancel', drop)
+              clear()
+              row.style.opacity = ''
+              grip.style.cursor = 'grab'
+              if (target != rank) {
+                request({ action: 'rankPlace', id: vehicle.value, energy: state.energy, index: index, rank: target }, function() { reload('') }, refuse)
+              }
+            }
+            grip.addEventListener('pointermove', move)
+            grip.addEventListener('pointerup', drop)
+            grip.addEventListener('pointercancel', drop)
+          })
+          head.unshift(grip)
+        }
+        var remove = el('span', 'msj-btn')
+        remove.appendChild(el('i', 'fas fa-trash'))
+        remove.appendChild(document.createTextNode(' {{Supprimer ce lieu}}'))
+        remove.style.cssText = 'padding:2px 9px;margin-left:auto;'
+        remove.addEventListener('click', function() {
+          if (window.confirm('{{Supprimer ce lieu ? Les trajets déjà enregistrés ne sont pas modifiés.}}')) {
+            request({ action: 'deletePlace', id: vehicle.value, energy: state.energy, index: index }, function() { reload('{{Lieu supprimé.}}') }, refuse)
+          }
+        })
+        more.appendChild(remove)
+        head.forEach(function(node) { row.appendChild(node) })
+        row.appendChild(more)
+        return row
+      }
+
+
+      // Les favoris d'abord, dans l'ordre choisi ; les autres arrêts de la voiture à part, les plus récents en tête
+      var favorites = []
+      var others = []
+      map.places.forEach(function(place, index) {
+        (place.favorite ? favorites : others).push([place, index])
+      })
+      others.reverse()
+      content.appendChild(el('h4', null, '{{Mes favoris}}'))
+      if (favorites.length == 0) {
+        content.appendChild(el('div', 'msj-message', '{{Aucun favori pour le moment. Ajoutez-en un ci-dessus, ou donnez un nom à un lieu de la liste ci-dessous puis cliquez sur son étoile.}}'))
+      }
+      favorites.forEach(function(item, rank) {
+        content.appendChild(buildRow(item[0], item[1], rank, favorites.length))
+      })
+      content.appendChild(el('h4', null, '{{Autres lieux où la voiture s\'est arrêtée}}'))
+      if (others.length == 0) {
+        content.appendChild(el('div', 'msj-message', '{{Aucun autre lieu pour le moment : ils s\'ajoutent à chaque stationnement hors d\'un favori.}}'))
+      }
+      // Au-delà de quelques lignes, le reste est replié pour que la page reste lisible avec un long historique
+      var SHOWN = 6
+      var hidden = el('div')
+      hidden.style.display = 'none'
+      others.forEach(function(item, rank) {
+        (rank < SHOWN ? content : hidden).appendChild(buildRow(item[0], item[1], 0, 0))
+      })
+      if (others.length > SHOWN) {
+        var more = el('span', 'msj-btn', '{{Afficher les}} ' + (others.length - SHOWN) + ' {{lieux plus anciens}}')
+        more.style.marginTop = '8px'
+        more.addEventListener('click', function() {
+          hidden.style.display = ''
+          more.style.display = 'none'
+        })
+        content.appendChild(hidden)
+        content.appendChild(more)
+      }
+
+      if (map.canEdit) {
+        content.appendChild(el('div', 'msj-note', '{{Le nom d\'un lieu remplace son adresse dans le journal, sur la tuile et dans la commande « Lieu », utilisable dans les scénarios. Pour rattacher un lieu à un favori, choisissez le nom du favori dans la liste de la case « Nom » : deux lieux de même nom comptent pour un seul. Le rayon général des favoris se règle dans la configuration du plugin ; chaque favori peut avoir le sien, plus large à la campagne ou pour un parking souterrain, plus serré en ville. Le prix saisi sur un lieu s\'applique aux recharges ou aux pleins faits à cet endroit ; ailleurs, c\'est le prix de la configuration du plugin.}}'))
       }
     }
 
@@ -932,7 +1397,7 @@ var myskodaJournal = (function() {
       })
       var byDay = (state.tab == 'day' || state.tab == 'map')
       dayBar.style.display = byDay ? '' : 'none'
-      periodBar.style.display = (byDay || state.tab == 'car') ? 'none' : ''
+      periodBar.style.display = (byDay || state.tab == 'car' || state.tab == 'places') ? 'none' : ''
       clearInterval(state.timer)
       var energies = []
       vehicleBar.innerHTML = ''
@@ -990,6 +1455,17 @@ var myskodaJournal = (function() {
       }
       var asked = state.tab + vehicle.value + state.energy + state.day + state.start + state.end
       state.asked = asked
+      if (state.tab == 'places') {
+        request({ action: 'getMap', id: vehicle.value, energy: state.energy }, function(map) {
+          if (state.asked != asked) {
+            return
+          }
+          message.textContent = ''
+          content.innerHTML = ''
+          renderPlaces(map)
+        }, fail)
+        return
+      }
       var render = { day: renderDay, trips: renderTrips, charges: renderCharges, stats: renderStats }[state.tab]
       var query = (state.tab == 'day' || state.tab == 'map')
         ? { action: 'getDay', id: vehicle.value, energy: state.energy, date: state.day }

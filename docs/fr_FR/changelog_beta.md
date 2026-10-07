@@ -4,6 +4,16 @@
 >
 >Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et le journal de bord d'une électrique sur plusieurs jours. Les retours sont les bienvenus.
 
+# 0.6 — 07/10/2026
+
+- Nouvelle option par véhicule, « Recharge pilotée » (surplus solaire, batterie domestique, heures creuses), décochée par défaut : quand un scénario démarre et arrête la charge, le journal compte une seule recharge par branchement du câble, avec la durée de charge réelle, le nombre de reprises et le temps de branchement, au lieu d'une recharge à chaque reprise.
+
+- Page de l'équipement : la photo du véhicule y est affichée, avec sa désignation, dès qu'il a été lu une première fois.
+- Le code S-PIN se saisit désormais sur la page de chaque véhicule, et non plus dans la configuration générale : il est propre au véhicule et à son utilisateur principal. Il reste enregistré chiffré. Un code saisi auparavant dans la configuration générale continue de servir à défaut.
+- Version mobile : en bas du journal, un administrateur trouve deux boutons vers la version ordinateur de Jeedom, seul endroit où ajouter un véhicule et régler le plugin.
+- Si Škoda ajoute une commande à son API (verrouillage, réveil du véhicule…) et qu'un véhicule l'annonce, le plugin le signale une fois dans le centre de messages, pour qu'elle puisse être prise en charge.
+- Configuration : le délai de relecture après une commande devient réglable (20 secondes à 2 minutes, 1 minute par défaut), pour les scénarios qui ont besoin de voir vite l'effet d'une commande.
+
 # 0.5 — 07/10/2026
 
 - **Nouvel onglet « Lieux »** dans le journal de bord, pour gérer les lieux où la voiture se gare :

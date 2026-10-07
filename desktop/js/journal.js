@@ -70,6 +70,8 @@ var myskodaJournal = (function() {
     '.msj-place { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(127,127,127,.25); }',
     '.msj-place input[type=text] { flex: 0 1 200px; height: 30px; padding: 2px 8px; }',
     '.msj-place input[type=checkbox] { flex: 0 0 auto; margin: 0; }',
+    // Un bouton qui est un lien garde l'aspect des autres boutons, quel que soit le thème (la version mobile colore les liens)
+    '.msj a.msj-btn, .msj a.msj-btn:visited, .msj a.msj-btn:hover { color: inherit !important; text-decoration: none !important; font-weight: normal; text-shadow: none; }',
     // Ligne d'un lieu : le nom reste court, l'adresse prend la place ; les petits réglages sont dans la partie dépliable
     '.msj-place input.msj-name { flex: 1 1 150px; max-width: 240px; }',
     '.msj-place input.msj-address { flex: 3 1 260px; }',
@@ -402,7 +404,7 @@ var myskodaJournal = (function() {
       if (isTrip) {
         main.appendChild(el('div', null, (row.from || EMPTY) + (row.ongoing ? '' : '  →  ' + (row.to || EMPTY))))
       } else {
-        main.appendChild(el('div', null, row.place || EMPTY))
+        main.appendChild(el('div', null, chargePlace(row)))
       }
       main.appendChild(el('div', null, U.level + ' ' + battery(row)))
       if (car && vehicles.length > 1) {
@@ -1202,6 +1204,15 @@ var myskodaJournal = (function() {
       return U.fuel ? list.filter(function(item, index) { return skipped.indexOf(index) < 0 }) : list
     }
 
+    // Lieu d'une recharge ; pour une recharge pilotée faite en plusieurs fois, le nombre de reprises et le temps de branchement
+    function chargePlace(row) {
+      var text = row.place || EMPTY
+      if (row.resumes > 1) {
+        text += ' · ' + row.resumes + ' {{reprises}}' + (row.pluggedMinutes ? ', {{branchée}} ' + duration(row.pluggedMinutes) : '')
+      }
+      return text
+    }
+
     function chargeCells(label, place, rows, isGroup) {
       var energy = has(rows, 'energy') ? sum(rows, 'energy') : null
       var minutes = sum(rows, 'minutes')
@@ -1244,7 +1255,7 @@ var myskodaJournal = (function() {
       monthsOf(rows).forEach(function(month) {
         lines.push({ group: true, cells: chargeCells(monthLabel(month.key), '', month.rows, true) })
         month.rows.forEach(function(row) {
-          lines.push({ cells: chargeCells(dayLabel(row.start) + ' ' + hour(row.start), row.place || EMPTY, [row]) })
+          lines.push({ cells: chargeCells(dayLabel(row.start) + ' ' + hour(row.start), chargePlace(row), [row]) })
         })
       })
       content.appendChild(headline(rows.length == 0 ? U.noRefill : rows.length + ' ' + U.refills, rows.length == 0 ? null : function() {
@@ -1513,6 +1524,30 @@ var myskodaJournal = (function() {
       bar.appendChild(tag)
     }, function() {})
 
+    // Version mobile : Jeedom n'y a aucune page de réglage. Un administrateur y trouve donc, en bas du journal, deux
+    // boutons vers les pages du plugin dans la version ordinateur, seul endroit où ajouter un véhicule ou changer un réglage.
+    if (version == 'mobile') {
+      request({ action: 'isAdmin' }, function(admin) {
+        if (!admin) {
+          return
+        }
+        var settings = el('div', 'msj-bar')
+        settings.style.marginTop = '18px'
+        ;[['index.php?v=d&m=myskoda&p=myskoda', 'fas fa-car', '{{Véhicules}}'], ['index.php?v=d&p=plugin&id=myskoda', 'fas fa-wrench', '{{Configuration}}']].forEach(function(target) {
+          var link = el('a', 'msj-btn')
+          link.href = target[0]
+          link.target = '_blank'
+          link.rel = 'noopener'
+          link.appendChild(el('i', target[1]))
+          link.appendChild(document.createTextNode(' ' + target[2]))
+          settings.appendChild(link)
+        })
+        root.appendChild(settings)
+        root.appendChild(el('div', 'msj-note', '{{Ces deux boutons ouvrent la version ordinateur de Jeedom : c\'est là que l\'on ajoute un véhicule et que l\'on règle le plugin.}}'))
+      }, function() {})
+    }
+
+
     request({ action: 'getVehicles' }, function(list) {
       vehicles = list
       vehicles.forEach(function(item) {
@@ -1521,7 +1556,9 @@ var myskodaJournal = (function() {
         vehicle.appendChild(option)
       })
       if (vehicles.length == 0) {
-        fail('{{Aucun véhicule actif. Ajoutez un équipement dans le plugin MySkoda.}}')
+        fail(version == 'mobile'
+          ? '{{Aucun véhicule actif. Un véhicule s\'ajoute depuis la version ordinateur de Jeedom : menu Plugins, Objets connectés, MySkoda, « Ajouter un véhicule ».}}'
+          : '{{Aucun véhicule actif. Ajoutez-en un : menu Plugins, Objets connectés, MySkoda, « Ajouter un véhicule ».}}')
       }
       refresh()
     }, fail)

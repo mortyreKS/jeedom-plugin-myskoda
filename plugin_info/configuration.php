@@ -46,17 +46,8 @@ if (!isConnect()) {
         <a href="https://public.api.connect.skoda-auto.cz/docs" target="_blank" rel="noopener">{{Documentation de Škoda}}</a>
       </div>
     </div>
-    <div class="form-group">
-      <label class="col-md-4 control-label">{{Code S-PIN}}
-        <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. Code à 4 chiffres de votre compte MyŠkoda. Škoda ne l'exige que pour démarrer le chauffage auxiliaire (chauffage stationnaire des véhicules thermiques et hybrides qui en sont équipés). Inutile pour la climatisation et la charge d'un véhicule électrique}}"></i></sup>
-      </label>
-      <div class="col-md-4">
-        <input class="configKey form-control inputPassword" data-l1key="spin" autocomplete="new-password"/>
-      </div>
-      <div class="col-md-4">
-        {{À remplir seulement si votre véhicule a un chauffage auxiliaire.}}
-      </div>
-    </div>
+    <!-- Le code S-PIN se saisit sur la page de chaque véhicule : il est propre au véhicule et à son utilisateur principal -->
+
     <div class="form-group">
       <label class="col-md-4 control-label">{{Lecture à l'arrêt et en charge}}
         <sup><i class="fas fa-question-circle tooltips" title="{{Škoda autorise 20 requêtes par heure et par véhicule, commandes comprises : chaque commande en coûte deux (la commande, puis la relecture une minute après). Ce rythme vaut aussi pendant une recharge, pour garder des requêtes pour les commandes}}"></i></sup>
@@ -80,6 +71,20 @@ if (!isConnect()) {
           <option value="4">{{Toutes les 4 minutes}}</option>
           <option value="3">{{Toutes les 3 minutes}}</option>
           <option value="10">{{Toutes les 10 minutes}}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-md-4 control-label">{{Relecture après une commande}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{Délai entre l'envoi d'une commande (charge, climatisation) et la lecture qui en montre l'effet sur la tuile et dans les scénarios. Plus court, l'état suit plus vite ; trop court, la voiture n'a pas encore répondu et l'état ne changera qu'à la lecture suivante}}"></i></sup>
+      </label>
+      <div class="col-md-4">
+        <select class="configKey form-control" data-l1key="refresh_after_command">
+          <option value="60">{{1 minute}}</option>
+          <option value="45">{{45 secondes}}</option>
+          <option value="30">{{30 secondes}}</option>
+          <option value="20">{{20 secondes}}</option>
+          <option value="120">{{2 minutes}}</option>
         </select>
       </div>
     </div>

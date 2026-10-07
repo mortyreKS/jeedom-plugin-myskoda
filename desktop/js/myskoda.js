@@ -60,6 +60,46 @@ function printEqLogic(_eqLogic) {
     group.style.display = ((!hasBattery && !hasFuel) || wanted) ? '' : 'none'
   })
 
+  // Photo du véhicule en haut de la colonne de droite : celle de la commande « Image », connue après la première lecture.
+  // Elle est masquée pour un équipement qui n'en a pas encore, ou si elle ne se charge pas.
+  var photoBox = document.getElementById('div_myskodaPhoto')
+  var photo = document.getElementById('img_myskodaPhoto')
+  if (photoBox && photo) {
+    photoBox.style.display = 'none'
+    photo.removeAttribute('src')
+    photo.onerror = function() { photoBox.style.display = 'none' }
+    // Sous la photo, la désignation du véhicule donnée par Škoda (par exemple « KAROQ STY TS110/1.5A7F »)
+    var photoTitle = document.getElementById('div_myskodaPhotoTitle')
+    if (photoTitle) {
+      photoTitle.textContent = ''
+      var nameCmd = (_eqLogic.cmd || []).filter(function(cmd) { return cmd.logicalId == 'name' })[0]
+      if (nameCmd) {
+        jeedom.cmd.execute({
+          id: nameCmd.id,
+          notify: false,
+          error: function() {},
+          success: function(value) {
+            photoTitle.textContent = (typeof value == 'string') ? value : ''
+          }
+        })
+      }
+    }
+    var imageCmd = (_eqLogic.cmd || []).filter(function(cmd) { return cmd.logicalId == 'image' })[0]
+    if (imageCmd) {
+      jeedom.cmd.execute({
+        id: imageCmd.id,
+        notify: false,
+        error: function() {},
+        success: function(value) {
+          if (typeof value == 'string' && value.indexOf('https://') == 0) {
+            photo.src = value
+            photoBox.style.display = ''
+          }
+        }
+      })
+    }
+  }
+
   // Motorisation affichée à côté du titre « Paramètres spécifiques » : celle que Škoda indique,
   // à défaut celle qui se déduit des énergies remontées
   var badge = document.getElementById('span_myskodaCarType')

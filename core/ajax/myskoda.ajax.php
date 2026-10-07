@@ -41,6 +41,10 @@ try {
         ajax::success(myskoda::searchAddress(init('address')));
     }
 
+    if (init('action') == 'isAdmin') {
+        ajax::success(isConnect('admin'));
+    }
+
     if (init('action') == 'getVersion') {
         ajax::success(myskoda::getVersionLabel());
     }

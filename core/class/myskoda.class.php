@@ -124,6 +124,9 @@ class myskoda extends eqLogic {
     'stopActiveVentilation' => array('ventilation_stop' => array('Arrêter la ventilation', 'other', '')),
   );
 
+  // Opérations de l'API connues mais volontairement non proposées par le plugin : elles ne sont pas signalées comme nouvelles
+  private static $_ignoredOperations = array('updateChargingProfile');
+
   private static $_chargeModeLabels = array(
     'MANUAL' => 'Manuel',
     'TIMER' => 'Minuterie',
@@ -495,6 +498,7 @@ class myskoda extends eqLogic {
     message::removeAll(__CLASS__, $this->messageKey());
     message::removeAll(__CLASS__, $this->disabledKey());
     message::removeAll(__CLASS__, $this->serviceKey());
+    message::removeAll(__CLASS__, 'myskoda::operations::' . $this->getId());
   }
 
   private function scheduleKey() {
@@ -861,6 +865,19 @@ class myskoda extends eqLogic {
         $supported[] = $operation['name'];
       }
     }
+    // L'API de Škoda est jeune et peut s'enrichir (verrouillage, réveil du véhicule…). Une opération annoncée par le
+    // véhicule que cette version du plugin ne connaît pas est signalée une fois, pour qu'elle puisse être ajoutée.
+    $unknown = array_values(array_diff($supported, array_keys(self::$_actions), self::$_ignoredOperations));
+    sort($unknown);
+    $known = (string) $this->getCache('unknownOperations', '');
+    if (implode(',', $unknown) != $known) {
+      $this->setCache('unknownOperations', implode(',', $unknown));
+      message::removeAll(__CLASS__, 'myskoda::operations::' . $this->getId());
+      if (count($unknown) > 0) {
+        log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . 'opérations annoncées par Škoda et non gérées par cette version : ' . implode(', ', $unknown));
+        message::add(__CLASS__, $this->getHumanName() . ' : ' . sprintf(__('Škoda propose pour ce véhicule une ou plusieurs commandes que cette version du plugin ne gère pas encore : %s. Vérifiez s\'il existe une version plus récente du plugin, ou signalez-le à son auteur.', __FILE__), implode(', ', $unknown)), '', 'myskoda::operations::' . $this->getId());
+      }
+    }
     foreach (self::$_actions as $operation => $commands) {
       if (!in_array($operation, $supported)) {
         continue;
@@ -978,11 +995,26 @@ class myskoda extends eqLogic {
     $this->refreshWidget();
   }
 
-  // Le chauffage auxiliaire est la seule commande pour laquelle Škoda exige le code S-PIN du compte
+  // Le code S-PIN d'un véhicule est enregistré chiffré, comme le veut le core pour un réglage d'équipement :
+  // ces deux méthodes sont appelées par le core à chaque lecture et à chaque écriture de l'équipement en base.
+  public function decrypt() {
+    $this->setConfiguration('spin', utils::decrypt($this->getConfiguration('spin')));
+  }
+
+  public function encrypt() {
+    $this->setConfiguration('spin', utils::encrypt($this->getConfiguration('spin')));
+  }
+
+  // Le chauffage auxiliaire est la seule commande pour laquelle Škoda exige le code S-PIN. Ce code est propre au
+  // véhicule et à son utilisateur principal (il se redéfinit dans la voiture, avec ses deux clés) : il se saisit donc
+  // sur l'équipement. Un code saisi autrefois dans la configuration générale du plugin sert encore à défaut.
   public function startAuxiliaryHeating() {
-    $spin = trim((string) config::byKey('spin', __CLASS__));
+    $spin = trim((string) $this->getConfiguration('spin'));
     if ($spin == '') {
-      throw new Exception(__('Le chauffage auxiliaire demande le code S-PIN : le saisir dans la configuration du plugin', __FILE__));
+      $spin = trim((string) config::byKey('spin', __CLASS__));
+    }
+    if ($spin == '') {
+      throw new Exception(__('Le chauffage auxiliaire demande le code S-PIN du véhicule : le saisir sur la page de l\'équipement', __FILE__));
     }
     $this->sendCommand('POST', 'auxiliary-heating/start', array('spin' => $spin, 'startMode' => 'HEATING'));
   }
@@ -998,7 +1030,10 @@ class myskoda extends eqLogic {
     }
     $this->applyQuotaHeaders($api);
     log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . $_method . ' ' . $_operation . ' ' . self::describeBody($_body));
-    $this->setNextRefresh(time() + self::REFRESH_AFTER_COMMAND);
+    // Délai avant la relecture qui montre l'effet de la commande : réglable, entre 15 secondes et 5 minutes
+    $delay = config::byKey('refresh_after_command', __CLASS__, self::REFRESH_AFTER_COMMAND);
+    $delay = is_numeric($delay) ? max(15, min(300, (int) $delay)) : self::REFRESH_AFTER_COMMAND;
+    $this->setNextRefresh(time() + $delay);
   }
   /*     * **************************Panneau****************************** */
 
@@ -1630,6 +1665,57 @@ class myskoda extends eqLogic {
     return array_reverse($trips);
   }
 
+  // Vrai si l'utilisateur a déclaré, sur l'équipement, que la charge de ce véhicule est démarrée et arrêtée par un
+  // scénario (surplus solaire, batterie domestique, heures creuses)
+  public function isManagedCharging() {
+    return $this->getConfiguration('managed_charging', 0) == 1;
+  }
+
+  // Recharges de la période : liste de (début, fin, en cours), dans l'ordre du temps.
+  // Cas général : une recharge par période où la voiture charge.
+  // Recharge pilotée (option de l'équipement) : une recharge par branchement du câble. Un scénario qui suit le surplus
+  // solaire démarre et arrête la charge au gré des nuages ; compté période par période, cela donnait huit « recharges »
+  // de quelques minutes à 0 kWh pour une journée où la batterie avait gagné 5 points (constaté chez un testeur le
+  // 2026-10-07). Toutes les reprises faites pendant que le câble reste branché forment donc une seule recharge, qui
+  // porte en plus sa durée de charge réelle (« minutes »), son nombre de reprises et sa durée de branchement.
+  private function chargeSessions($_start, $_end) {
+    $charging = $this->periods('charging', $_start, $_end);
+    if (!$this->isManagedCharging() || !is_object($this->getCmd('info', 'plug_connected'))) {
+      return $charging;
+    }
+    $sessions = array();
+    $used = array();
+    foreach ($this->periods('plug_connected', $_start, $_end) as $plug) {
+      $inside = array();
+      foreach ($charging as $index => $period) {
+        // Charge et branchement viennent du même relevé de la voiture : leurs heures coïncident à la seconde près
+        if (!isset($used[$index]) && $period[0] >= $plug[0] && $period[0] <= $plug[1]) {
+          $inside[] = $period;
+          $used[$index] = true;
+        }
+      }
+      if (count($inside) == 0) {
+        continue;
+      }
+      $last = $inside[count($inside) - 1];
+      $minutes = 0;
+      foreach ($inside as $period) {
+        $minutes += self::minutesBetween($period[0], $period[1]);
+      }
+      $sessions[] = array($inside[0][0], $last[1], $last[2], 'minutes' => $minutes, 'resumes' => count($inside), 'pluggedMinutes' => self::minutesBetween($plug[0], $plug[1]));
+    }
+    // Une période de charge sans branchement connu (historique du câble incomplet) reste une recharge à elle seule
+    foreach ($charging as $index => $period) {
+      if (!isset($used[$index])) {
+        $sessions[] = $period;
+      }
+    }
+    usort($sessions, function ($_a, $_b) {
+      return strcmp($_a[0], $_b[0]);
+    });
+    return $sessions;
+  }
+
   // Recharges de la période, de la plus récente à la plus ancienne, d'après l'historique de « En charge »
   public function getCharges($_start, $_end) {
     if ($this->getKind() == 'fuel') {
@@ -1638,9 +1724,10 @@ class myskoda extends eqLogic {
     $capacity = $this->getCapacity();
     $powerCmd = $this->getCmd('info', 'charge_power');
     $charges = array();
-    foreach ($this->periods('charging', $_start, $_end) as $period) {
-      list($start, $end, $ongoing) = $period;
-      $minutes = self::minutesBetween($start, $end);
+    foreach ($this->chargeSessions($_start, $_end) as $session) {
+      list($start, $end, $ongoing) = $session;
+      // Durée de charge réelle : pour une recharge pilotée, les pauses entre deux reprises n'en font pas partie
+      $minutes = isset($session['minutes']) ? $session['minutes'] : self::minutesBetween($start, $end);
       $levelStart = $this->valueAt($this->levelId(), $start);
       $levelEnd = $this->valueAt($this->levelId(), $end);
       $gained = self::difference($levelEnd, $levelStart, 0);
@@ -1669,6 +1756,9 @@ class myskoda extends eqLogic {
         'maxPower' => ($maxPower === null) ? null : round($maxPower, 1),
         'rangeGained' => self::difference($this->valueAt('range', $end), $this->valueAt('range', $start), 0),
         'cost' => ($energy !== null && $price > 0) ? round($energy * $price, 2) : null,
+        // Recharge pilotée : nombre de reprises de charge et durée pendant laquelle le câble est resté branché
+        'resumes' => isset($session['resumes']) ? $session['resumes'] : 1,
+        'pluggedMinutes' => isset($session['pluggedMinutes']) ? $session['pluggedMinutes'] : null,
       );
     }
     return array_reverse($this->addIntervals($charges));
@@ -1725,6 +1815,10 @@ class myskoda extends eqLogic {
     $needed = array('moving', 'mileage', 'latitude', 'longitude', $this->levelId(), $this->rangeId());
     if ($this->getKind() != 'fuel') {
       $needed = array_merge($needed, array('charging', 'charge_power'));
+      // Une recharge pilotée se délimite par le branchement du câble
+      if ($this->isManagedCharging()) {
+        $needed[] = 'plug_connected';
+      }
     }
     $missing = array();
     foreach (array_unique($needed) as $logicalId) {

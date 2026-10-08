@@ -119,7 +119,7 @@ var myskodaJournal = (function() {
   }
 
   function signed(value, unit, decimals) {
-    return (value === null || value === undefined) ? EMPTY : (value > 0 ? '+' : '') + show(value, unit, decimals)
+    return (value === null || value === undefined) ? EMPTY : (value > 0 ? '+' : '') + show(value || 0, unit, decimals)
   }
 
   function duration(minutes) {
@@ -418,7 +418,7 @@ var myskodaJournal = (function() {
         figures.appendChild(el('div', null, row.rangeUsed === null ? '' : '{{Autonomie}} ' + signed(-row.rangeUsed, 'km')))
       } else {
         figures.appendChild(el('b', null, row.energy === null ? signed(row.rangeGained, 'km') : signed(row.energy, U.energy, 1)))
-        figures.appendChild(el('div', null, [row.energy === null ? EMPTY : signed(row.rangeGained, 'km'), show(row.maxPower, 'kW', 1), show(row.cost, '€', 2)].filter(function(t) { return t != EMPTY }).join(' · ')))
+        figures.appendChild(el('div', null, [row.energy === null ? EMPTY : signed(row.rangeGained, 'km'), show(row.power, 'kW', 1), show(row.cost, '€', 2)].filter(function(t) { return t != EMPTY }).join(' · ')))
       }
       body.appendChild(figures)
       node.appendChild(body)
@@ -745,12 +745,61 @@ var myskodaJournal = (function() {
         editBar.innerHTML = ''
         editBar.style.display = ''
         editBar.appendChild(el('b', null, (place.name || place.address || '{{Lieu}}')))
-        editBar.appendChild(el('span', null, '{{Le point rouge est l\'emplacement enregistré. Cliquez sur la carte pour le déplacer, puis enregistrez.}}'))
+        editBar.appendChild(el('span', null, '{{Le point rouge est l\'emplacement enregistré. S\'il est mal placé, cliquez sur la carte pour le déplacer. Puis validez : l\'adresse de ce point vous sera proposée.}}'))
         var keep = el('span', 'msj-btn')
         keep.appendChild(el('i', 'fas fa-check'))
-        keep.appendChild(document.createTextNode(' {{Enregistrer cette position}}'))
+        keep.appendChild(document.createTextNode(' {{Valider ce point et vérifier son adresse}}'))
+        var move = function(address) {
+          var query = { action: 'movePlace', id: vehicle.value, energy: state.energy, index: index, lat: pending[0], lng: pending[1] }
+          if (address) {
+            query.address = address
+            query.withAddress = 1
+          }
+          request(query, function() { reload(address ? '{{Position et adresse enregistrées.}}' : '{{Position enregistrée.}}') }, refuse)
+        }
         keep.addEventListener('click', function() {
-          request({ action: 'movePlace', id: vehicle.value, energy: state.energy, index: index, lat: pending[0], lng: pending[1] }, function() { reload('{{Position enregistrée.}}') }, refuse)
+          // La box demande à OpenStreetMap l'adresse du point et la propose, que le point ait bougé ou non (un point
+          // bien placé peut porter une adresse fausse) ; l'adresse affichée n'est remplacée que si l'utilisateur l'accepte
+          var moved = !(pending[0] == place.lat && pending[1] == place.lng)
+          editBar.innerHTML = ''
+          editBar.appendChild(el('span', null, '{{Recherche de l\'adresse de ce point…}}'))
+          request({ action: 'findAddress', id: vehicle.value, energy: state.energy, lat: pending[0], lng: pending[1] }, function(found) {
+            if (!found || !found.label || found.label == place.address) {
+              if (moved) {
+                move(null)
+              } else {
+                reload('{{L\'adresse affichée correspond déjà à ce point.}}')
+              }
+              return
+            }
+            editBar.innerHTML = ''
+            editBar.appendChild(el('b', null, (place.name || '{{Lieu}}')))
+            var text = el('span', null, '{{Adresse de ce point}} : ' + found.label + (place.address ? '. {{Adresse actuelle}} : ' + place.address + '.' : '.'))
+            text.style.flex = '1 1 100%'
+            editBar.appendChild(text)
+            var both = el('span', 'msj-btn')
+            both.appendChild(el('i', 'fas fa-check'))
+            both.appendChild(document.createTextNode(' {{Enregistrer avec cette adresse}}'))
+            both.addEventListener('click', function() { move(found.label) })
+            var only = el('span', 'msj-btn', place.address ? '{{Garder l\'adresse actuelle}}' : '{{Enregistrer sans adresse}}')
+            only.addEventListener('click', function() {
+              if (moved) {
+                move(null)
+              } else {
+                reload('')
+              }
+            })
+            var back = el('span', 'msj-btn', '{{Annuler}}')
+            back.addEventListener('click', function() { reload('') })
+            ;[both, only, back].forEach(function(node) { editBar.appendChild(node) })
+          }, function() {
+            // Adresse introuvable ou service muet : la position est enregistrée, l'adresse reste à corriger à la main
+            if (moved) {
+              move(null)
+            } else {
+              reload('{{L\'adresse de ce point n\'a pas été trouvée. Vous pouvez la corriger à la main dans la liste.}}')
+            }
+          })
         })
         var cancel = el('span', 'msj-btn', '{{Annuler}}')
         cancel.addEventListener('click', function() { reload('') })
@@ -931,8 +980,9 @@ var myskodaJournal = (function() {
         radius.title = '{{Facultatif : rayon de ce favori en mètres. Vide : le rayon général réglé dans la configuration du plugin}}'
         // Un seul envoi pour toute la ligne ; la page est rechargée quand la carte ou la liste de noms en dépend
         var send = function(reloading, text, favorite) {
-          request({ action: 'renamePlace', id: vehicle.value, energy: state.energy, index: index, name: name.value, price: price.value, address: address.value, withAddress: 1, favorite: favorite ? 1 : 0, radius: radius.value }, function() {
-            if (reloading) {
+          request({ action: 'renamePlace', id: vehicle.value, energy: state.energy, index: index, name: name.value, price: price.value, address: address.value, withAddress: 1, favorite: favorite ? 1 : 0, radius: radius.value }, function(fresh) {
+            // Rechargement aussi quand l'enregistrement a retiré un lieu couvert par un favori : les rangs ont changé
+            if (reloading || (fresh && fresh.places && fresh.places.length != map.places.length)) {
               reload(text)
             } else {
               message.textContent = text
@@ -1066,6 +1116,12 @@ var myskodaJournal = (function() {
         more.appendChild(remove)
         head.forEach(function(node) { row.appendChild(node) })
         row.appendChild(more)
+        if (place.coveredBy) {
+          // Lieu ordinaire situé dans le rayon d'un favori : gardé parce qu'il porte une saisie, mais il ne sert plus
+          var covered = el('div', 'msj-note', '{{Couvert par le favori}} « ' + place.coveredBy + ' » : {{les stationnements faits ici sont rattachés à ce favori. Supprimez ce lieu, ou réduisez le rayon du favori.}}')
+          covered.style.flex = '1 1 100%'
+          row.appendChild(covered)
+        }
         return row
       }
 
@@ -1107,7 +1163,7 @@ var myskodaJournal = (function() {
       }
 
       if (map.canEdit) {
-        content.appendChild(el('div', 'msj-note', '{{Le nom d\'un lieu remplace son adresse dans le journal, sur la tuile et dans la commande « Lieu », utilisable dans les scénarios. Pour rattacher un lieu à un favori, choisissez le nom du favori dans la liste de la case « Nom » : deux lieux de même nom comptent pour un seul. Le rayon général des favoris se règle dans la configuration du plugin ; chaque favori peut avoir le sien, plus large à la campagne ou pour un parking souterrain, plus serré en ville. Le prix saisi sur un lieu s\'applique aux recharges ou aux pleins faits à cet endroit ; ailleurs, c\'est le prix de la configuration du plugin.}}'))
+        content.appendChild(el('div', 'msj-note', '{{Le nom d\'un lieu remplace son adresse dans le journal, sur la tuile et dans la commande « Lieu », utilisable dans les scénarios. Pour donner à un lieu le nom d\'un autre, choisissez-le dans la liste de la case « Nom » : deux lieux de même nom s\'affichent sous ce nom et comptent pour un même lieu dans les trajets ; chacun garde son prix, et seul celui marqué d\'une étoile a un rayon. Le rayon général des favoris se règle dans la configuration du plugin ; chaque favori peut avoir le sien, plus large à la campagne ou pour un parking souterrain, plus serré en ville. Le prix saisi sur un lieu s\'applique aux recharges ou aux pleins faits à cet endroit ; ailleurs, c\'est le prix de la configuration du plugin.}}'))
       }
     }
 

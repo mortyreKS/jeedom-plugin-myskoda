@@ -1121,9 +1121,8 @@ class myskoda extends eqLogic {
       $places[$index]['address'] = $_address;
     } else {
       $places[] = array('lat' => (float) $_lat, 'lng' => (float) $_lng, 'address' => $_address);
-      $places = array_slice($places, -self::PLACES_MAX);
     }
-    config::save($this->placesKey(), json_encode(array_values($places), JSON_UNESCAPED_UNICODE), __CLASS__);
+    config::save($this->placesKey(), json_encode(self::capPlaces($places), JSON_UNESCAPED_UNICODE), __CLASS__);
   }
 
   // Libellé d'une position : nom donné au lieu par l'utilisateur, à défaut son adresse, à défaut l'adresse ou les coordonnées fournies
@@ -1212,7 +1211,19 @@ class myskoda extends eqLogic {
     if ($address == '') {
       throw new Exception(__('Saisissez une adresse, ou cliquez sur la carte pour placer le point', __FILE__));
     }
-    $ch = curl_init('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' . rawurlencode($address));
+    $found = self::askNominatim('search?format=jsonv2&limit=1&q=' . rawurlencode($address));
+    if (!is_array($found)) {
+      throw new Exception(__('La recherche d\'adresse n\'a pas abouti. Cliquez sur la carte pour placer le point vous-même', __FILE__));
+    }
+    if (count($found) == 0 || !isset($found[0]['lat']) || !isset($found[0]['lon'])) {
+      throw new Exception(__('Adresse introuvable. Vérifiez-la, ou cliquez sur la carte pour placer le point vous-même', __FILE__));
+    }
+    return array('lat' => (float) $found[0]['lat'], 'lng' => (float) $found[0]['lon'], 'label' => isset($found[0]['display_name']) ? (string) $found[0]['display_name'] : $address);
+  }
+
+  // Question posée au service Nominatim d'OpenStreetMap ; réponse décodée, null si le service n'a pas répondu
+  private static function askNominatim($_query) {
+    $ch = curl_init('https://nominatim.openstreetmap.org/' . $_query);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
     curl_setopt($ch, CURLOPT_TIMEOUT, 12);
@@ -1221,14 +1232,35 @@ class myskoda extends eqLogic {
     $raw = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    $found = ($raw === false || $status != 200) ? null : json_decode($raw, true);
-    if (!is_array($found)) {
-      throw new Exception(__('La recherche d\'adresse n\'a pas abouti. Cliquez sur la carte pour placer le point vous-même', __FILE__));
+    return ($raw === false || $status != 200) ? null : json_decode($raw, true);
+  }
+
+  // Adresse d'un point de la carte, pour la proposer quand l'utilisateur déplace un lieu ; même service et mêmes
+  // précautions que searchAddress. Écrite comme les adresses que donne Škoda : « rue numéro, code postal ville, pays ».
+  public static function findAddress($_lat, $_lng) {
+    if (!is_numeric($_lat) || !is_numeric($_lng) || abs((float) $_lat) > 90 || abs((float) $_lng) > 180) {
+      throw new Exception(__('Placez d\'abord le point sur la carte', __FILE__));
     }
-    if (count($found) == 0 || !isset($found[0]['lat']) || !isset($found[0]['lon'])) {
-      throw new Exception(__('Adresse introuvable. Vérifiez-la, ou cliquez sur la carte pour placer le point vous-même', __FILE__));
+    $found = self::askNominatim('reverse?format=jsonv2&addressdetails=1&zoom=18&lat=' . rawurlencode((float) $_lat) . '&lon=' . rawurlencode((float) $_lng));
+    if (!is_array($found) || !isset($found['address']) || !is_array($found['address'])) {
+      throw new Exception(__('L\'adresse de ce point n\'a pas été trouvée', __FILE__));
     }
-    return array('lat' => (float) $found[0]['lat'], 'lng' => (float) $found[0]['lon'], 'label' => isset($found[0]['display_name']) ? (string) $found[0]['display_name'] : $address);
+    $parts = $found['address'];
+    $pick = function ($_keys) use ($parts) {
+      foreach ($_keys as $key) {
+        if (isset($parts[$key]) && trim((string) $parts[$key]) != '') {
+          return trim((string) $parts[$key]);
+        }
+      }
+      return '';
+    };
+    $street = trim($pick(array('road', 'pedestrian', 'footway', 'path', 'square', 'hamlet')) . ' ' . $pick(array('house_number')));
+    $city = trim($pick(array('postcode')) . ' ' . $pick(array('city', 'town', 'village', 'municipality')));
+    $label = implode(', ', array_filter(array($street, $city, $pick(array('country')))));
+    if ($label == '') {
+      throw new Exception(__('L\'adresse de ce point n\'a pas été trouvée', __FILE__));
+    }
+    return array('label' => $label);
   }
 
   // Crée un lieu favori à un point choisi par l'utilisateur (adresse cherchée ou clic sur la carte), avec l'adresse
@@ -1332,7 +1364,8 @@ class myskoda extends eqLogic {
   }
 
   // Déplace le point d'un lieu existant, affiné par l'utilisateur sur la carte
-  public function movePlace($_index, $_lat, $_lng) {
+  // $_address : null pour garder l'adresse ; sinon l'adresse du nouveau point, acceptée par l'utilisateur
+  public function movePlace($_index, $_lat, $_lng, $_address = null) {
     $places = $this->getPlaces();
     if (!isset($places[$_index])) {
       throw new Exception(__('Lieu inconnu', __FILE__));
@@ -1342,6 +1375,10 @@ class myskoda extends eqLogic {
     }
     $places[$_index]['lat'] = (float) $_lat;
     $places[$_index]['lng'] = (float) $_lng;
+    if ($_address !== null && trim($_address) != '') {
+      $places[$_index]['address'] = trim($_address);
+      $places[$_index]['addressFixed'] = true;
+    }
     $this->savePlaces($places);
   }
 
@@ -1378,9 +1415,51 @@ class myskoda extends eqLogic {
     $this->savePlaces($places);
   }
 
+  // Ramène la liste à PLACES_MAX lieux en retirant les lieux ordinaires les plus anciens ; un favori n'est jamais retiré
+  private static function capPlaces($_places) {
+    $_places = array_values($_places);
+    foreach (array_keys($_places) as $index) {
+      if (count($_places) <= self::PLACES_MAX) {
+        break;
+      }
+      if (empty($_places[$index]['favorite'])) {
+        unset($_places[$index]);
+      }
+    }
+    return array_values($_places);
+  }
+
+  // Indice du favori dont le rayon contient un lieu ordinaire ; null si aucun, ou si le lieu est lui-même un favori
+  private static function coveringFavorite($_places, $_index) {
+    if (!isset($_places[$_index]) || !empty($_places[$_index]['favorite'])) {
+      return null;
+    }
+    $default = self::favoriteRadius();
+    foreach ($_places as $index => $place) {
+      if (empty($place['favorite'])) {
+        continue;
+      }
+      $radius = (isset($place['radius']) && is_numeric($place['radius']) && $place['radius'] > 0) ? (float) $place['radius'] : $default;
+      if (self::distanceMeters($_places[$_index]['lat'], $_places[$_index]['lng'], $place['lat'], $place['lng']) <= $radius) {
+        return $index;
+      }
+    }
+    return null;
+  }
+
   // Enregistre les lieux, puis remet à jour la commande « Lieu » et la tuile si le véhicule est stationné
   private function savePlaces($_places) {
-    config::save($this->placesKey(), json_encode(array_values(array_slice($_places, -self::PLACES_MAX)), JSON_UNESCAPED_UNICODE), __CLASS__);
+    // Un lieu ordinaire tombé dans le rayon d'un favori ne sert plus : le favori passe toujours avant lui. S'il n'a
+    // reçu ni nom, ni prix, ni adresse corrigée, il est retiré (il se recréera seul si le favori rétrécit) ; sinon il
+    // reste, et la liste le signale comme couvert, pour ne rien effacer de ce que l'utilisateur a saisi.
+    foreach (array_keys($_places) as $index) {
+      $place = $_places[$index];
+      $touched = (isset($place['name']) && $place['name'] != '') || !empty($place['price']) || !empty($place['priceFuel']) || !empty($place['addressFixed']);
+      if (!$touched && self::coveringFavorite($_places, $index) !== null) {
+        unset($_places[$index]);
+      }
+    }
+    config::save($this->placesKey(), json_encode(self::capPlaces($_places), JSON_UNESCAPED_UNICODE), __CLASS__);
     $lat = $this->getCmd('info', 'latitude');
     $lng = $this->getCmd('info', 'longitude');
     if (is_object($lat) && is_object($lng) && is_numeric($lat->execCmd()) && is_numeric($lng->execCmd())) {
@@ -1402,6 +1481,9 @@ class myskoda extends eqLogic {
     foreach ($places as $index => $place) {
       $places[$index]['price'] = isset($place[$key]) ? $place[$key] : null;
       unset($places[$index]['priceFuel']);
+      // Lieu ordinaire couvert par un favori : la liste le dit, il n'apparaît plus sur les trajets
+      $covering = self::coveringFavorite($places, $index);
+      $places[$index]['coveredBy'] = ($covering === null) ? null : $places[$covering]['name'];
     }
     // Dernier jour où le véhicule a roulé (sur 90 jours) : la carte s'y ouvre quand le jour courant n'a aucun trajet
     $trips = $this->periods('moving', date('Y-m-d 00:00:00', time() - 90 * 86400), date('Y-m-d H:i:s'));
@@ -1752,7 +1834,8 @@ class myskoda extends eqLogic {
         'levelStart' => $levelStart,
         'levelEnd' => $levelEnd,
         'energy' => $energy,
-        'power' => ($energy !== null && $minutes > 0) ? round($energy / ($minutes / 60), 1) : null,
+        // Sans énergie mesurée (niveau resté au même point entier), une puissance moyenne de 0 kW serait fausse : pas de valeur
+        'power' => ($energy !== null && $energy > 0 && $minutes > 0) ? round($energy / ($minutes / 60), 1) : null,
         'maxPower' => ($maxPower === null) ? null : round($maxPower, 1),
         'rangeGained' => self::difference($this->valueAt('range', $end), $this->valueAt('range', $start), 0),
         'cost' => ($energy !== null && $price > 0) ? round($energy * $price, 2) : null,

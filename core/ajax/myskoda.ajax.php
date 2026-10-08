@@ -41,6 +41,13 @@ try {
         ajax::success(myskoda::searchAddress(init('address')));
     }
 
+    if (init('action') == 'findAddress') {
+        if (!isConnect('admin')) {
+            throw new Exception(__('401 - Accès non autorisé', __FILE__));
+        }
+        ajax::success(myskoda::findAddress(init('lat'), init('lng')));
+    }
+
     if (init('action') == 'isAdmin') {
         ajax::success(isConnect('admin'));
     }
@@ -93,7 +100,7 @@ try {
             $eqLogic->rankPlace((int) init('index'), (int) init('rank'));
         }
         if (init('action') == 'movePlace') {
-            $eqLogic->movePlace((int) init('index'), init('lat'), init('lng'));
+            $eqLogic->movePlace((int) init('index'), init('lat'), init('lng'), (init('withAddress') == 1) ? init('address') : null);
         }
         if (init('action') == 'deletePlace') {
             $eqLogic->deletePlace((int) init('index'));

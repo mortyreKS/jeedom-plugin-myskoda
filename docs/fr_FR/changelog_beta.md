@@ -4,6 +4,19 @@
 >
 >Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et le journal de bord d'une électrique sur plusieurs jours. Les retours sont les bienvenus.
 
+# 0.7 — 08/10/2026
+
+- Option « Recharge pilotée » confirmée sur un Elroq rechargé sur surplus solaire : une journée de huit reprises de charge apparaît comme une seule recharge, avec son énergie et sa durée réelle.
+- Fiche d'une recharge (onglets Journée et Carte) : la puissance affichée est désormais la puissance moyenne, comme dans le tableau de l'onglet Recharges, et non plus la puissance maximale relevée.
+- Tableau des recharges : une recharge dont l'énergie n'a pas pu être mesurée n'affiche plus « 0,0 kW » de puissance moyenne, mais un tiret.
+
+- Onglet « Lieux » : quand vous ouvrez un lieu sur la carte et validez son point, déplacé ou non, le plugin cherche l'adresse de ce point (auprès d'OpenStreetMap, par votre Jeedom) et vous la propose si elle diffère de l'adresse affichée ; vous l'acceptez ou vous gardez l'adresse actuelle. Un lieu bien placé dont l'adresse est fausse se corrige ainsi en deux clics.
+- Onglet « Lieux » : un lieu ordinaire qui se trouve dans le rayon d'un favori, et auquel vous n'avez donné ni nom, ni prix, ni adresse, est retiré de la liste : il faisait doublon avec le favori. S'il porte une saisie, il est gardé et signalé « couvert par le favori ».
+- Documentation relue ligne par ligne face au plugin et corrigée : où se saisit le prix d'un lieu, ce que coûte réellement chaque commande, signalement d'une clé expirée (après coup, pas à l'avance), saisie du contrôle technique, lieux de même nom ; ajouts sur l'hybride rechargeable, la réserve de quota et les commandes masquées par défaut.
+- Documentation illustrée de captures d'écran : tuile d'un électrique et d'un thermique, onglets Journée, Carte, Lieux, Trajets, Recharges et Statistiques.
+- Journal de bord : une autonomie inchangée s'affiche « 0 km » et non plus « -0 km ».
+- Au-delà de 300 lieux mémorisés, ce sont les lieux ordinaires les plus anciens qui sont retirés, jamais un favori.
+
 # 0.6 — 07/10/2026
 
 - Nouvelle option par véhicule, « Recharge pilotée » (surplus solaire, batterie domestique, heures creuses), décochée par défaut : quand un scénario démarre et arrête la charge, le journal compte une seule recharge par branchement du câble, avec la durée de charge réelle, le nombre de reprises et le temps de branchement, au lieu d'une recharge à chaque reprise.

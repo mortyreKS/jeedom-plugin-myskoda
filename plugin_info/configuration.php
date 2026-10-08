@@ -90,7 +90,7 @@ if (!isConnect()) {
     </div>
     <div class="form-group">
       <label class="col-md-4 control-label">{{Rayon des lieux favoris (m)}}
-        <sup><i class="fas fa-question-circle tooltips" title="{{Un stationnement fait à moins de cette distance d'un lieu favori (Maison, Travail…) lui est rattaché. La position transmise par la voiture peut s'écarter de plus de cent mètres au même endroit. Chaque favori peut avoir son propre rayon, réglé dans le journal de bord, sous la carte}}"></i></sup>
+        <sup><i class="fas fa-question-circle tooltips" title="{{Un stationnement fait à moins de cette distance d'un lieu favori (Maison, Travail…) lui est rattaché. La position transmise par la voiture peut s'écarter de plus de cent mètres au même endroit. Chaque favori peut avoir son propre rayon, réglé dans le journal de bord, onglet « Lieux »}}"></i></sup>
       </label>
       <div class="col-md-4">
         <input class="configKey form-control" data-l1key="favorite_radius" placeholder="200"/>
@@ -98,7 +98,7 @@ if (!isConnect()) {
     </div>
     <div class="form-group">
       <label class="col-md-4 control-label">{{Prix du kWh (€)}}
-        <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. Sert au journal de bord pour estimer le coût des trajets et des recharges. Un prix propre à un lieu (borne publique, par exemple) se saisit dans le journal, sous la carte}}"></i></sup>
+        <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. Sert au journal de bord pour estimer le coût des trajets et des recharges. Un prix propre à un lieu (borne publique, par exemple) se saisit dans le journal de bord, onglet « Lieux »}}"></i></sup>
       </label>
       <div class="col-md-4">
         <input class="configKey form-control" data-l1key="kwh_price" placeholder="{{par exemple 0,20}}"/>

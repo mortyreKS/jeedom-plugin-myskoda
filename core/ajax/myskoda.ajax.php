@@ -26,6 +26,12 @@ try {
 
     ajax::init();
 
+    // Plugin désactivé : le core ne charge plus sa classe, et toute action s'arrêterait sur une erreur PHP sans message.
+    // Une page du plugin restée ouverte (journal de bord) reçoit à la place une explication.
+    if (config::byKey('active', 'myskoda', 0) != 1) {
+        throw new Exception(__('Le plugin MySkoda est désactivé. Réactivez-le dans le menu Plugins, Gestion des plugins, MySkoda.', __FILE__));
+    }
+
     if (init('action') == 'addVehicle') {
         if (!isConnect('admin')) {
             throw new Exception(__('401 - Accès non autorisé', __FILE__));
@@ -50,6 +56,13 @@ try {
 
     if (init('action') == 'isAdmin') {
         ajax::success(isConnect('admin'));
+    }
+
+    if (init('action') == 'getDiagnostic') {
+        if (!isConnect('admin')) {
+            throw new Exception(__('401 - Accès non autorisé', __FILE__));
+        }
+        ajax::success(myskodaDiagnostic::generate());
     }
 
     if (init('action') == 'getVersion') {

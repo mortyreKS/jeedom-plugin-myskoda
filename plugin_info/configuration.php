@@ -113,4 +113,94 @@ if (!isConnect()) {
       </div>
     </div>
   </fieldset>
+  <fieldset>
+    <legend>{{Diagnostic et support}}</legend>
+    <div class="form-group">
+      <label class="col-md-4 control-label">{{Rapport de diagnostic}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{État du plugin et de chaque véhicule, à joindre quand vous signalez un problème. Il ne contient ni clé, ni code S-PIN, ni numéro de série, ni plaque, ni nom, ni adresse, ni position}}"></i></sup>
+      </label>
+      <div class="col-md-8">
+        <a class="btn btn-default" id="bt_myskodaDiagnostic"><i class="fas fa-file-medical-alt"></i> {{Générer un rapport de diagnostic}}</a>
+        <span id="span_myskodaDiagnostic" style="margin-left:8px;"></span>
+        <div id="div_myskodaDiagnostic" style="display:none;margin-top:10px;">
+          <textarea id="ta_myskodaDiagnostic" class="form-control" readonly rows="18" spellcheck="false" style="font-family:monospace;font-size:12px;"></textarea>
+          <div style="margin-top:5px;">
+            <a class="btn btn-default" id="bt_myskodaDiagnosticCopy"><i class="fas fa-copy"></i> {{Copier le rapport}}</a>
+            <a class="btn btn-default" id="bt_myskodaDiagnosticDownload"><i class="fas fa-download"></i> {{Télécharger le rapport}}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </fieldset>
 </form>
+<script>
+// Rapport de diagnostic : demandé au plugin, affiché tel quel, puis copié ou téléchargé depuis le navigateur
+(function() {
+  var button = document.getElementById('bt_myskodaDiagnostic')
+  var status = document.getElementById('span_myskodaDiagnostic')
+  var zone = document.getElementById('div_myskodaDiagnostic')
+  var area = document.getElementById('ta_myskodaDiagnostic')
+  var fileName = 'myskoda-diagnostic.txt'
+  var busy = false
+
+  button.addEventListener('click', function() {
+    if (busy) {
+      return
+    }
+    busy = true
+    status.textContent = '{{Rapport en cours de préparation…}}'
+    fetch('plugins/myskoda/core/ajax/myskoda.ajax.php', { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'getDiagnostic' }) })
+      .then(function(response) { return response.json() })
+      .then(function(answer) {
+        if (answer.state != 'ok') {
+          throw new Error(String(answer.result).replace(/<[^>]+>/g, ''))
+        }
+        area.value = answer.result.report
+        fileName = answer.result.fileName || fileName
+        zone.style.display = ''
+        status.textContent = '{{Rapport prêt : copiez-le ou téléchargez-le pour le joindre à votre message.}}'
+      })
+      .catch(function(error) {
+        status.textContent = '{{Le rapport n\'a pas pu être préparé}} : ' + error.message
+      })
+      .then(function() { busy = false })
+  })
+
+  // Le presse-papiers du navigateur n'est accessible qu'en https : en http (accès local), on passe par la sélection
+  function copyBySelection() {
+    area.focus()
+    area.select()
+    var done = false
+    try {
+      done = document.execCommand('copy')
+    } catch (error) {
+      done = false
+    }
+    status.textContent = done ? '{{Rapport copié.}}' : '{{Copie automatique impossible : le rapport est sélectionné, copiez-le avec Ctrl+C.}}'
+  }
+
+  document.getElementById('bt_myskodaDiagnosticCopy').addEventListener('click', function() {
+    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(area.value).then(function() {
+        status.textContent = '{{Rapport copié.}}'
+      }, copyBySelection)
+    } else {
+      copyBySelection()
+    }
+  })
+
+  document.getElementById('bt_myskodaDiagnosticDownload').addEventListener('click', function() {
+    var url = URL.createObjectURL(new Blob([area.value], { type: 'text/plain;charset=utf-8' }))
+    var link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    // Jeedom intercepte sur la page tout clic sur un lien pour charger son adresse comme une page : ce clic-ci ne doit
+    // pas lui parvenir, sinon le téléchargement est remplacé par une erreur « Failed to fetch »
+    link.addEventListener('click', function(event) { event.stopPropagation() })
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(function() { URL.revokeObjectURL(url) }, 1000)
+  })
+})()
+</script>

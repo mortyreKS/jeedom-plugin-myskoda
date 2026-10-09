@@ -62,6 +62,20 @@ var myskodaJournal = (function() {
     '.msj th:first-child, .msj td:first-child, .msj td.msj-left, .msj th.msj-left { text-align: left; }',
     '.msj td.msj-wrap { white-space: normal; min-width: 160px; }',
     '.msj tr.msj-group td { font-weight: bold; background: rgba(127,127,127,.14); }',
+    // Tableau resserré, puis en fiches, quand il ne tient pas dans la largeur (voir fitTables)
+    '.msj table.msj-compact th { white-space: normal; vertical-align: bottom; }',
+    '.msj table.msj-compact th, .msj table.msj-compact td { padding: 4px 5px; font-size: 12px; }',
+    // Les fiches se rangent côte à côte tant que la largeur le permet
+    '.msj table.msj-stack { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; align-items: start; }',
+    '.msj table.msj-stack tr.msj-head { display: none; }',
+    '.msj table.msj-stack tr { display: block; padding: 5px 10px; border-radius: 8px; background: rgba(127,127,127,.14); }',
+    '.msj table.msj-stack tr.msj-group { background: rgba(127,127,127,.28); }',
+    '.msj table.msj-stack td { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border: 0; white-space: normal; text-align: right; min-width: 0; background: none; }',
+    '.msj table.msj-stack td::before { content: attr(data-label); flex: 0 0 auto; font-weight: normal; opacity: .75; text-align: left; }',
+    '.msj table.msj-stack td:empty { display: none; }',
+    // La première cellule (date, ou intitulé d'un total) sert de titre à la fiche : son intitulé de colonne est inutile
+    '.msj table.msj-stack td:first-child { font-weight: bold; font-size: 14px; justify-content: flex-start; text-align: left; }',
+    '.msj table.msj-stack td:first-child::before { content: none; }',
     '.msj-curve { display: block; width: 100%; height: 64px; }',
     '.msj-curve polygon { fill: rgba(92,184,92,.3); } .msj-curve polyline { fill: none; stroke: #5cb85c; stroke-width: 2; vector-effect: non-scaling-stroke; }',
     '.msj-caption { font-size: 11px; opacity: .7; }',
@@ -1170,7 +1184,7 @@ var myskodaJournal = (function() {
     function table(headers, lines) {
       var wrapper = el('div', 'msj-scroll')
       var node = el('table')
-      var head = el('tr')
+      var head = el('tr', 'msj-head')
       headers.forEach(function(header) {
         head.appendChild(el('th', header[1] || null, header[0]))
       })
@@ -1178,12 +1192,40 @@ var myskodaJournal = (function() {
       lines.forEach(function(line) {
         var tr = el('tr', line.group ? 'msj-group' : null)
         line.cells.forEach(function(cell, index) {
-          tr.appendChild(el('td', headers[index][1] || null, cell))
+          var td = el('td', headers[index][1] || null, cell)
+          // Intitulé de la colonne, affiché devant la valeur quand le tableau est présenté en fiches
+          td.setAttribute('data-label', headers[index][0])
+          tr.appendChild(td)
         })
         node.appendChild(tr)
       })
       wrapper.appendChild(node)
+      // Le tableau n'est pas encore dans la page : sa largeur se mesure juste après
+      setTimeout(fitTables, 0)
       return wrapper
+    }
+
+    // Un tableau plus large que l'écran (téléphone, tablette, fenêtre étroite) aurait ses dernières colonnes hors de
+    // vue, sans que rien ne le signale (constaté chez un testeur le 2026-10-09). Il est d'abord resserré (intitulés sur
+    // deux lignes, marges réduites) ; s'il dépasse encore, chaque ligne devient une fiche : une valeur par ligne,
+    // précédée de l'intitulé de sa colonne.
+    function fitTables() {
+      root.querySelectorAll('.msj-scroll').forEach(function(wrapper) {
+        var node = wrapper.querySelector('table')
+        // Un tableau masqué (onglet replié) n'a pas de largeur : il sera mesuré quand il sera affiché
+        if (!node || wrapper.clientWidth == 0) {
+          return
+        }
+        node.classList.remove('msj-compact', 'msj-stack')
+        if (node.scrollWidth <= wrapper.clientWidth + 1) {
+          return
+        }
+        node.classList.add('msj-compact')
+        if (node.scrollWidth > wrapper.clientWidth + 1) {
+          node.classList.remove('msj-compact')
+          node.classList.add('msj-stack')
+        }
+      })
     }
 
     // ----- Export vers un tableur (CSV lisible par Excel : point-virgule, virgule décimale, UTF-8 avec marque)
@@ -1207,6 +1249,9 @@ var myskodaJournal = (function() {
       var link = el('a')
       link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
       link.download = 'myskoda-' + name + '_' + state.start + '_' + state.end + '.csv'
+      // Jeedom intercepte sur la page tout clic sur un lien pour charger son adresse comme une page : ce clic-ci ne
+      // doit pas lui parvenir, sinon le téléchargement est remplacé par une erreur « Failed to fetch »
+      link.addEventListener('click', function(event) { event.stopPropagation() })
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -1603,6 +1648,17 @@ var myskodaJournal = (function() {
       }, function() {})
     }
 
+
+    // Écran tourné ou fenêtre redimensionnée : les tableaux sont remesurés. Jeedom change de page sans recharger :
+    // l'écoute se retire d'elle-même quand le journal n'est plus dans la page.
+    var onResize = function() {
+      if (!document.body.contains(root)) {
+        window.removeEventListener('resize', onResize)
+        return
+      }
+      fitTables()
+    }
+    window.addEventListener('resize', onResize)
 
     request({ action: 'getVehicles' }, function(list) {
       vehicles = list

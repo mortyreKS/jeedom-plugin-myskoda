@@ -60,6 +60,14 @@ function printEqLogic(_eqLogic) {
     group.style.display = ((!hasBattery && !hasFuel) || wanted) ? '' : 'none'
   })
 
+  // Couleur de fond de la carte : un sélecteur de couleur ne peut pas être vide, le navigateur y met du noir. Sans
+  // couleur enregistrée, il montre donc la couleur par défaut (celle de myskoda::CARD_COLOR), que le plugin traite
+  // comme « pas de choix » ; sinon un simple « Sauvegarder » rendrait la carte noire.
+  var cardColor = document.querySelector('.eqLogicAttr[data-l1key="configuration"][data-l2key="card_color"]')
+  if (cardColor && !(_eqLogic.configuration && /^#[0-9a-f]{6}$/i.test(_eqLogic.configuration.card_color || ''))) {
+    cardColor.value = '#142c46'
+  }
+
   // Photo du véhicule en haut de la colonne de droite : celle de la commande « Image », connue après la première lecture.
   // Elle est masquée pour un équipement qui n'en a pas encore, ou si elle ne se charge pas.
   var photoBox = document.getElementById('div_myskodaPhoto')

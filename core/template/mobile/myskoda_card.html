@@ -1,0 +1,126 @@
+<div class="msc #ms_card_class#" style="#ms_card_style#">
+  <style>
+    /* Présentation « carte », version mobile (fabriquée par outils/carte_mobile.py) : largeur de l'écran, hauteur du contenu.
+       Aucune couleur en notation hexadécimale : Jeedom traite ce fichier comme un gabarit et y remplacerait ce qui se
+       trouve entre deux croisillons. Les couleurs sont des triplets « r, g, b » dans des variables :
+       --msc-a et --msc-b le dégradé du fond (choisi sur l'équipement), --msc-t les textes, --msc-v les voiles. */
+    .eqLogic.myskoda-card-host { padding: 0 !important; overflow: visible !important; }
+    .eqLogic.myskoda-card-host > .refresh, .eqLogic.myskoda-card-host .widget-name { display: none !important; }
+    .eqLogic.myskoda-card-host > center > div { padding: 0 !important; }
+    .msc { --msc-a: 20, 44, 70; --msc-b: 18, 72, 98; --msc-t: 236, 246, 250; --msc-v: 255, 255, 255;
+      box-sizing: border-box; width: 100%; max-width: 420px; min-height: 380px; margin: 0 auto; padding: 12px; border-radius: 18px; color: rgb(var(--msc-t)); font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; overflow: hidden; text-align: left;
+      background: linear-gradient(160deg, rgb(var(--msc-a)) 0%, rgb(var(--msc-b)) 100%); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); display: flex; flex-direction: column; gap: 8px; }
+    body:not([data-theme*="Dark"]) .msc.msc-clair { --msc-t: 24, 34, 44; --msc-v: 0, 0, 0; }
+    /* Thème sombre de Jeedom (le soir, si l'option est activée) : une carte claire prend la version sombre de sa couleur */
+    body[data-theme*="Dark"] .msc.msc-clair { --msc-a: var(--msc-da) !important; --msc-b: var(--msc-db) !important; }
+    .msc * { box-sizing: border-box; }
+    .msc-head { display: flex; align-items: center; gap: 6px; height: 24px; flex: 0 0 auto; }
+    .msc-nom { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msc-nom i { margin-right: 6px; opacity: .85; }
+    .msc-pill { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(var(--msc-v), .14); white-space: nowrap; }
+    .msc-pill.msc-vert { background: rgb(30, 215, 96); color: rgb(8, 40, 24); }
+    .msc-pill.msc-bleu { background: rgb(90, 200, 250); color: rgb(8, 30, 48); }
+    .msc-pill.msc-rouge { background: rgba(225, 70, 70, .9); color: rgb(255, 255, 255); }
+    .msc-photo { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+    .msc-cadre { flex: 0 0 160px; height: 96px; border-radius: 14px; overflow: hidden; background: rgba(0, 0, 0, .22); display: flex; align-items: center; justify-content: center; }
+    body:not([data-theme*="Dark"]) .msc.msc-clair .msc-cadre { background: rgba(0, 0, 0, .08); }
+    .msc-cadre img { max-width: 100%; max-height: 100%; }
+    .msc-cadre.msc-rendu img { width: 100%; height: 100%; max-height: none; object-fit: cover; transform: scale(1.25); }
+    .msc-id { flex: 1 1 auto; min-width: 0; }
+    .msc-modele { font-size: 13px; font-weight: 700; line-height: 1.25; }
+    .msc-icones { font-size: 17px; margin-top: 3px; }
+    .msc-icones i { margin-right: 8px; }
+    .msc-ancien { opacity: .35; }
+    .msc-etat-date { font-size: 11px; opacity: .8; }
+    .msc .ms-ok { color: rgb(30, 215, 96); }
+    .msc .ms-warn { color: rgb(255, 170, 60); }
+    .msc .ms-info { color: rgb(90, 200, 250); }
+    body:not([data-theme*="Dark"]) .msc.msc-clair .ms-ok { color: rgb(20, 150, 70); }
+    body:not([data-theme*="Dark"]) .msc.msc-clair .ms-warn { color: rgb(200, 110, 10); }
+    body:not([data-theme*="Dark"]) .msc.msc-clair .ms-info { color: rgb(20, 120, 190); }
+    .msc-jauge { flex: 0 0 auto; }
+    .msc-chiffres { display: flex; align-items: baseline; justify-content: space-between; }
+    .msc-pct { font-size: 30px; font-weight: 700; line-height: 1; }
+    .msc-pct i { font-size: 18px; margin-right: 8px; opacity: .85; }
+    .msc-pct small { font-size: 14px; font-weight: 700; opacity: .8; }
+    .msc-km { font-size: 16px; font-weight: 700; }
+    .msc-barre { position: relative; height: 8px; border-radius: 4px; background: rgba(var(--msc-v), .2); margin-top: 6px; }
+    .msc-barre > div { height: 100%; border-radius: 4px; background: rgb(30, 215, 96); }
+    .msc-barre > span { position: absolute; top: -3px; width: 2px; height: 14px; background: rgb(var(--msc-t)); opacity: .8; }
+    .msc-sep { flex: 0 0 1px; background: rgba(var(--msc-v), .14); margin: 1px 0; }
+    .msc-bloc { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+    .msc .msc-b { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50% !important; border: 0 !important; padding: 0 !important; margin: 0 !important; background: rgba(var(--msc-v), .12) !important; color: rgb(var(--msc-t)) !important;
+      font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: none !important; }
+    .msc button.msc-b { cursor: pointer; }
+    .msc button.msc-b:hover { filter: brightness(1.2); }
+    .msc .msc-b.msc-grand { width: 46px; height: 46px; font-size: 17px; }
+    .msc button.msc-b.msc-grand { background: rgb(30, 215, 96) !important; color: rgb(8, 40, 24) !important; }
+    .msc button.msc-b.msc-grand.msc-stop { background: rgba(225, 70, 70, .9) !important; color: rgb(255, 255, 255) !important; }
+    .msc .msc-b.msc-petit { width: 28px; height: 28px; font-size: 11px; }
+    .msc .msc-b.msc-mini { width: 24px; height: 24px; font-size: 11px; }
+    .msc .msc-b.msc-attente { opacity: .5; }
+    .msc-txt { flex: 1 1 auto; min-width: 0; }
+    .msc-titre { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msc-sous { font-size: 11px; opacity: .85; }
+    .msc select.msc-liste, .msc select.ms-select { flex: 0 0 auto; width: auto !important; height: 30px !important; border: 0 !important; border-radius: 10px !important; padding: 0 22px 0 9px !important; margin: 0 !important;
+      background-color: rgba(var(--msc-v), .16) !important; color: rgb(var(--msc-t)) !important; font-size: 12px !important; font-weight: 700; box-shadow: none !important; cursor: pointer; }
+    .msc select.msc-liste option { color: rgb(20, 30, 40); background: rgb(240, 244, 248); }
+    .msc-valeur { flex: 0 0 auto; font-size: 13px; font-weight: 700; }
+    .msc-ligne, .msc .ms-row { display: flex; justify-content: space-between; gap: 8px; }
+    .msc-ligne b, .msc .ms-row > span:last-child { font-weight: 700; text-align: right; }
+    .msc .ms-block { flex: 0 0 auto; }
+    .msc .ms-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .msc .ms-title i { margin-right: 6px; opacity: .85; }
+    .msc .ms-profiles { margin-top: 5px; }
+    .msc .ms-profiles summary { cursor: pointer; list-style: none; display: block; padding: 4px 8px; border-radius: 9px; font-weight: 700; background: rgba(var(--msc-v), .12); }
+    .msc .ms-profiles summary:hover { background: rgba(var(--msc-v), .22); }
+    .msc .ms-profiles summary::-webkit-details-marker { display: none; }
+    .msc .ms-profiles summary i { margin-right: 6px; transition: transform .15s; }
+    .msc .ms-profiles[open] summary i { transform: rotate(90deg); }
+    .msc .ms-profile { margin-top: 4px; padding-left: 8px; border-left: 2px solid rgba(var(--msc-v), .3); }
+    .msc .ms-profile-name { font-weight: 700; }
+    .msc .ms-nowrap { white-space: nowrap; }
+    .msc-pied { margin-top: auto; font-size: 11px; line-height: 1.5; opacity: .9; }
+    .msc-pied i { width: 14px; text-align: center; margin-right: 4px; }
+    .msc-alerte { color: rgb(255, 190, 90); }
+    body:not([data-theme*="Dark"]) .msc.msc-clair .msc-alerte { color: rgb(180, 90, 0); }
+  </style>
+  #ms_card#
+  <script>
+    (function() {
+      // La carte est cherchée dans sa propre tuile : une même tuile peut être affichée deux fois dans une page
+      var card = document.querySelector('.eqLogic[data-eqLogic_uid="#uid#"] .msc')
+      if (!card) return
+      var ask = function(text, run, cancel) {
+        if (window.jeeDialog && typeof jeeDialog.confirm == 'function') {
+          jeeDialog.confirm(text, function(result) { result ? run() : cancel() })
+        } else {
+          window.confirm(text) ? run() : cancel()
+        }
+      }
+      var send = function(item, value) {
+        // Jeedom change de page sans recharger : rien n'est envoyé si la carte n'est plus affichée
+        if (!document.body.contains(card)) return
+        var options = { id: item.getAttribute('data-ms-cmd') }
+        if (value !== undefined) options.value = { slider: value }
+        item.classList.add('msc-attente')
+        jeedom.cmd.execute(options)
+      }
+      card.querySelectorAll('button[data-ms-cmd]').forEach(function(button) {
+        button.addEventListener('click', function() {
+          var text = button.getAttribute('data-ms-confirm')
+          text ? ask(text, function() { send(button) }, function() {}) : send(button)
+        })
+      })
+      card.querySelectorAll('select[data-ms-cmd]').forEach(function(select) {
+        var shown = select.value
+        select.addEventListener('change', function() {
+          var value = select.value
+          var text = select.getAttribute('data-ms-confirm')
+          if (!text) return send(select, value)
+          ask(text.replace('%s', select.options[select.selectedIndex].text), function() { send(select, value) }, function() { select.value = shown })
+        })
+      })
+    })()
+  </script>
+</div>

@@ -33,6 +33,16 @@
     .myskoda-tile .ms-row { align-items: center; }
     .myskoda-tile .ms-service { margin-top: 6px; }
     .myskoda-tile .ms-foot { margin-top: 6px; font-size: 12px; opacity: 0.8; }
+    .myskoda-tile .ms-profile-zone { margin-top: 8px; }
+    .myskoda-tile .ms-profiles { margin-top: 5px; font-size: 12px; }
+    .myskoda-tile .ms-profiles summary { cursor: pointer; list-style: none; display: block; padding: 4px 8px; border-radius: 4px; font-size: 13px; font-weight: bold; background: rgba(127, 127, 127, 0.2); }
+    .myskoda-tile .ms-profiles summary:hover { background: rgba(127, 127, 127, 0.35); }
+    .myskoda-tile .ms-profiles summary::-webkit-details-marker { display: none; }
+    .myskoda-tile .ms-profiles summary i { margin-right: 6px; transition: transform 0.15s; }
+    .myskoda-tile .ms-profiles[open] summary i { transform: rotate(90deg); }
+    .myskoda-tile .ms-profile { margin-top: 4px; padding-left: 8px; border-left: 2px solid rgba(127, 127, 127, 0.35); }
+    .myskoda-tile .ms-profile-name { font-weight: bold; }
+    .myskoda-tile .ms-nowrap { white-space: nowrap; }
   </style>
   <div class="ms-top">
     <div class="ms-photo">
@@ -47,6 +57,7 @@
     #ms_charge#
     #ms_climate#
   </div>
+  #ms_profiles#
   #ms_service#
   <div class="ms-foot">#ms_foot#</div>
   <script>

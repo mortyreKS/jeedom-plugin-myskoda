@@ -160,6 +160,25 @@ $eqLogics = eqLogic::byType($plugin->getId());
 									<input type="text" class="eqLogicAttr form-control inputPassword" data-l1key="configuration" data-l2key="spin" autocomplete="new-password" placeholder="{{seulement pour le chauffage auxiliaire}}">
 								</div>
 							</div>
+							<div class="form-group">
+								<label class="col-sm-4 control-label">{{Présentation de la tuile}}
+									<sup><i class="fas fa-question-circle tooltips" title="{{Tuile : la présentation habituelle, dans le cadre des tuiles de Jeedom. Carte : une carte de taille fixe (330 × 500) au fond sombre, pensée pour un design ; elle porte l'essentiel, et chaque commande envoyée à la voiture y demande une confirmation}}"></i></sup>
+								</label>
+								<div class="col-sm-6">
+									<select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="tile_style">
+										<option value="">{{Tuile (par défaut)}}</option>
+										<option value="card">{{Carte}}</option>
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-4 control-label">{{Couleur de fond de la carte}}
+									<sup><i class="fas fa-question-circle tooltips" title="{{Pour la présentation « Carte » seulement. Le fond est un dégradé de cette couleur ; sur une couleur claire, les textes passent au sombre}}"></i></sup>
+								</label>
+								<div class="col-sm-6">
+									<input type="color" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="card_color" value="<?php echo myskoda::CARD_COLOR; ?>" style="width:70px;padding:2px;">
+								</div>
+							</div>
 							<!-- data-ms-energy : le champ n'est montré que si le véhicule remonte cette énergie (voir printEqLogic) -->
 							<div class="form-group" data-ms-energy="electric">
 									<label class="col-sm-4 control-label">{{Recharge pilotée}}

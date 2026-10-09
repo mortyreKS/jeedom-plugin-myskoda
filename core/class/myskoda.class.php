@@ -19,6 +19,7 @@
 /* * ***************************Includes********************************* */
 require_once __DIR__  . '/../../../../core/php/core.inc.php';
 require_once __DIR__  . '/myskodaApi.class.php';
+require_once __DIR__  . '/myskodaDiagnostic.class.php';
 
 class myskoda extends eqLogic {
   /*     * *************************Attributs****************************** */
@@ -64,6 +65,10 @@ class myskoda extends eqLogic {
     'max_charge_current' => array('Courant de charge', 'string', '', 0, 0),
     'max_charge_current_ampere' => array('Courant de charge maximal', 'numeric', 'A', 0, 0),
     'in_saved_location' => array('Dans un lieu enregistré', 'binary', '', 0, 0),
+    'charge_profile' => array('Profil de charge du lieu', 'string', '', 0, 1),
+    'charge_profile_target' => array('Profil de charge : limite', 'numeric', '%', 0, 0),
+    'charge_profile_min' => array('Profil de charge : charge minimale', 'numeric', '%', 0, 0),
+    'charge_profile_next' => array('Profil de charge : prochaine charge', 'string', '', 0, 0),
     'climate_on' => array('Climatisation active', 'binary', '', 1, 1),
     'climate_state' => array('État de la climatisation', 'string', '', 0, 1),
     'target_temperature' => array('Température de consigne', 'numeric', '°C', 0, 1),
@@ -537,6 +542,18 @@ class myskoda extends eqLogic {
     foreach ($_data as $key => $value) {
       if (in_array((string) $key, array('vin', 'licensePlate', 'formattedAddress', 'gpsCoordinates', 'latitude', 'longitude'), true)) {
         $_data[$key] = ($value === null) ? null : '***';
+      } elseif ((string) $key == 'chargingProfiles' && is_array($value)) {
+        // Un profil de charge porte le nom que l'utilisateur lui a donné, souvent celui d'un lieu (constaté dans le
+        // journal d'un testeur le 2026-10-09) ; le nom du véhicule, lui, reste lisible ailleurs dans la réponse
+        $_data[$key] = self::maskPersonal($value);
+        foreach (isset($_data[$key]['profiles']) && is_array($_data[$key]['profiles']) ? array_keys($_data[$key]['profiles']) : array() as $index) {
+          if (isset($_data[$key]['profiles'][$index]['name'])) {
+            $_data[$key]['profiles'][$index]['name'] = '***';
+          }
+        }
+        if (isset($_data[$key]['currentVehiclePositionProfile']['name'])) {
+          $_data[$key]['currentVehiclePositionProfile']['name'] = '***';
+        }
       } else {
         $_data[$key] = self::maskPersonal($value);
       }
@@ -562,6 +579,7 @@ class myskoda extends eqLogic {
 
     $vehicle = isset($response['vehicle']) && is_array($response['vehicle']) ? $response['vehicle'] : array();
     $this->applyVehicle($vehicle);
+    $this->applyChargingProfiles($vehicle);
     // Le rythme dépend de l'état qui vient d'être lu
     $next = time() + $this->getIntervalSeconds();
     if (isset($vehicle['operations']) && is_array($vehicle['operations'])) {
@@ -580,6 +598,121 @@ class myskoda extends eqLogic {
     $this->setNextRefresh($next);
     // Une seule régénération de la tuile pour toutes les valeurs reçues
     $this->refreshWidget();
+  }
+
+  // Profils de charge d'un électrique ou d'un hybride rechargeable, tels que Škoda les rend, mis en forme pour
+  // l'affichage. Un profil est un réglage de recharge rattaché à un lieu enregistré dans l'application MyŠkoda :
+  // limite de charge, charge minimale (en dessous, la voiture charge tout de suite), plages horaires préférées,
+  // minuteries. Rend null si le véhicule n'en fournit pas ; « current » est le profil du lieu où il est garé, ou null.
+  public static function extractChargingProfiles($_vehicle) {
+    $source = self::dig($_vehicle, 'chargingProfiles');
+    if (!is_array($source) || !isset($source['profiles']) || !is_array($source['profiles'])) {
+      return null;
+    }
+    $currentId = self::dig($source, 'currentVehiclePositionProfile.id');
+    $profiles = array();
+    $current = null;
+    foreach ($source['profiles'] as $item) {
+      if (!is_array($item)) {
+        continue;
+      }
+      $profile = array(
+        'id' => self::dig($item, 'id'),
+        'name' => (string) self::dig($item, 'name'),
+        'target' => self::dig($item, 'settings.targetStateOfChargeInPercent'),
+        // La charge minimale ne vaut que si elle n'est pas explicitement désactivée
+        'min' => (self::dig($item, 'settings.minBatteryStateOfCharge.enabled') === false) ? null : self::dig($item, 'settings.minBatteryStateOfCharge.minimumBatteryStateOfChargeInPercent'),
+        'current' => ($currentId !== null && self::dig($item, 'id') == $currentId),
+        'times' => array(),
+        'timers' => array(),
+      );
+      foreach (is_array(self::dig($item, 'preferredChargingTimes')) ? $item['preferredChargingTimes'] : array() as $time) {
+        if (self::dig($time, 'enabled') === true) {
+          $profile['times'][] = self::dig($time, 'startTime') . ' – ' . self::dig($time, 'endTime');
+        }
+      }
+      foreach (is_array(self::dig($item, 'timers')) ? $item['timers'] : array() as $timer) {
+        if (self::dig($timer, 'enabled') !== true) {
+          continue;
+        }
+        $days = (self::dig($timer, 'type') == 'ONE_OFF') ? array(self::dig($timer, 'oneOffDay')) : self::dig($timer, 'recurringOn');
+        $profile['timers'][] = trim(self::dig($timer, 'time') . ' ' . self::dayList(is_array($days) ? $days : array()));
+      }
+      // Deux plages identiques (constaté sur un Elroq) ne sont affichées qu'une fois
+      $profile['times'] = array_values(array_unique($profile['times']));
+      if ($profile['current']) {
+        $profile['next'] = self::dig($source, 'currentVehiclePositionProfile.nextChargingTime');
+        // La limite donnée pour le lieu actuel prime sur celle de la liste, si les deux diffèrent
+        $target = self::dig($source, 'currentVehiclePositionProfile.targetStateOfChargeInPercent');
+        if ($target !== null) {
+          $profile['target'] = $target;
+        }
+        $current = $profile;
+      }
+      $profiles[] = $profile;
+    }
+    return array('profiles' => $profiles, 'current' => $current, 'time' => self::toLocalDate(self::dig($source, 'carCapturedTimestamp')));
+  }
+
+  private static $_dayLabels = array('MONDAY' => 'lun.', 'TUESDAY' => 'mar.', 'WEDNESDAY' => 'mer.', 'THURSDAY' => 'jeu.', 'FRIDAY' => 'ven.', 'SATURDAY' => 'sam.', 'SUNDAY' => 'dim.');
+
+  // Jours d'une minuterie, en clair : « tous les jours », « lun. à ven. », ou la liste
+  private static function dayList($_days) {
+    $order = array_keys(self::$_dayLabels);
+    $ranks = array();
+    foreach ($_days as $day) {
+      $rank = array_search($day, $order, true);
+      if ($rank !== false) {
+        $ranks[$rank] = true;
+      }
+    }
+    ksort($ranks);
+    $ranks = array_keys($ranks);
+    if (count($ranks) == 0) {
+      return '';
+    }
+    if (count($ranks) == 7) {
+      return __('tous les jours', __FILE__);
+    }
+    $labels = array();
+    foreach ($ranks as $rank) {
+      $labels[] = __(self::$_dayLabels[$order[$rank]], __FILE__);
+    }
+    // Jours qui se suivent : le premier et le dernier suffisent
+    if (count($ranks) > 2 && $ranks[count($ranks) - 1] - $ranks[0] == count($ranks) - 1) {
+      return $labels[0] . ' ' . __('à', __FILE__) . ' ' . $labels[count($labels) - 1];
+    }
+    return implode(' ', $labels);
+  }
+
+  // Profils de charge : le profil du lieu où le véhicule est garé va dans des commandes (utilisables dans un scénario),
+  // la liste complète est gardée pour la tuile. Rien n'est créé pour un véhicule qui n'a pas de profils.
+  // Ces valeurs ne passent pas par applyVehicle : l'heure de leur relevé ne doit pas dater les autres commandes.
+  public function applyChargingProfiles($_vehicle) {
+    $data = self::extractChargingProfiles($_vehicle);
+    if ($data === null) {
+      return;
+    }
+    $this->setCache('chargingProfiles', $data['profiles']);
+    $time = ($data['time'] !== null && strtotime($data['time']) <= time()) ? $data['time'] : null;
+    $current = $data['current'];
+    // Hors de tout lieu enregistré, le nom est vidé : c'est lui qui dit si un profil s'applique
+    $this->updateInfo('charge_profile', ($current === null) ? '' : $current['name'], $time);
+    if ($current === null) {
+      if (is_object($this->getCmd('info', 'charge_profile_next'))) {
+        $this->updateInfo('charge_profile_next', '', $time);
+      }
+      return;
+    }
+    if ($current['target'] !== null) {
+      $this->updateInfo('charge_profile_target', $current['target'], $time);
+    }
+    if ($current['min'] !== null) {
+      $this->updateInfo('charge_profile_min', $current['min'], $time);
+    }
+    if ($current['next'] !== null || is_object($this->getCmd('info', 'charge_profile_next'))) {
+      $this->updateInfo('charge_profile_next', (string) $current['next'], $time);
+    }
   }
 
   private static $_partLabels = array(
@@ -1997,6 +2130,24 @@ class myskoda extends eqLogic {
     // Le contenu de la tuile varie (charge en cours, entretien, données désactivées…) : sa hauteur suit toujours son contenu.
     // Une hauteur enregistrée par le dashboard la couperait dès qu'un bloc s'ajoute (constaté le 2026-10-05).
     $replace['#height#'] = 'auto';
+    // Présentation « carte » (option de l'équipement) : une carte de taille fixe, au fond sombre, pensée pour un design.
+    // Elle remplace le cadre et le bandeau de titre que le core dessine autour d'une tuile.
+    if ($this->getConfiguration('tile_style') == 'card') {
+      $replace['#class#'] = trim($replace['#class#'] . ' myskoda-card-host');
+      $replace['#eqLogic_class#'] = '';
+      // Le fond du cadre est imposé par le thème avec une règle prioritaire sur toute feuille de style du plugin
+      // (constaté le 2026-10-09 sur le dashboard) : seul un style posé sur l'élément lui-même l'emporte
+      $replace['#style#'] = trim($replace['#style#'] . ';background:transparent !important;border:0 !important;box-shadow:none !important', ';');
+      if ($version == 'dashboard') {
+        $replace['#width#'] = self::CARD_WIDTH . 'px';
+        // La carte porte tout ce que porte la tuile : sa hauteur suit son contenu, à partir de sa hauteur minimale
+        $replace['#height#'] = 'auto';
+      }
+      list($cardClass, $cardStyle) = $this->cardColors();
+      $replace['#cmd#'] = str_replace(array('#ms_card#', '#ms_card_class#', '#ms_card_style#', '#uid#'), array($this->cardContent(), $cardClass, $cardStyle, $replace['#uid#']),
+        getTemplate('core', $version, 'myskoda_card', __CLASS__));
+      return $this->postToHtml($_version, template_replace($replace, getTemplate('core', $version, 'eqLogic')));
+    }
     $tags = $this->tileTags();
     $tags['#uid#'] = $replace['#uid#'];
     $replace['#cmd#'] = str_replace(array_keys($tags), array_values($tags), getTemplate('core', $version, 'myskoda', __CLASS__));
@@ -2022,6 +2173,362 @@ class myskoda extends eqLogic {
       return htmlspecialchars((string) $_date);
     }
     return (date('Y-m-d', $time) == date('Y-m-d')) ? date('H:i', $time) : date('d/m H:i', $time);
+  }
+
+  // Profils de charge sur la tuile, en lecture seule : le profil du lieu où le véhicule est garé, puis la liste de tous
+  // les profils, repliée. Affichés tant que la commande « Profil de charge du lieu » est visible.
+  private function tileChargingProfiles() {
+    $cmd = $this->getCmd('info', 'charge_profile');
+    $profiles = $this->getCache('chargingProfiles', array());
+    if (!is_object($cmd) || $cmd->getIsVisible() != 1 || !is_array($profiles) || count($profiles) == 0) {
+      return '';
+    }
+    $describe = function ($_profile) {
+      $parts = array();
+      if (isset($_profile['target']) && $_profile['target'] !== null) {
+        $parts[] = __('limite', __FILE__) . ' ' . (int) $_profile['target'] . ' %';
+      }
+      if (isset($_profile['min']) && $_profile['min'] !== null) {
+        $parts[] = __('minimum', __FILE__) . ' ' . (int) $_profile['min'] . ' %';
+      }
+      return implode(' · ', $parts);
+    };
+    $join = function ($_items) {
+      $parts = array();
+      foreach ($_items as $item) {
+        $parts[] = '<span class="ms-nowrap">' . htmlspecialchars((string) $item) . '</span>';
+      }
+      return implode(', ', $parts);
+    };
+    $html = '';
+    $list = '';
+    foreach ($profiles as $profile) {
+      $name = htmlspecialchars((string) $profile['name']);
+      if (!empty($profile['current'])) {
+        $html .= self::tileRow(__('Profil du lieu', __FILE__), $name);
+        if (!empty($profile['next'])) {
+          $html .= self::tileRow(__('Prochaine charge', __FILE__), htmlspecialchars((string) $profile['next']));
+        }
+      }
+      $times = (isset($profile['times']) && count($profile['times']) > 0) ? $join($profile['times']) : __('aucune', __FILE__);
+      $timers = (isset($profile['timers']) && count($profile['timers']) > 0) ? $join($profile['timers']) : __('aucune', __FILE__);
+      $list .= '<div class="ms-profile"><div class="ms-profile-name">' . (!empty($profile['current']) ? '<i class="fas fa-map-marker-alt ms-ok" title="' . __('Le véhicule est garé dans ce lieu', __FILE__) . '"></i> ' : '') . $name . '</div>'
+        . '<div>' . $describe($profile) . '</div>'
+        . '<div>' . __('Plages de charge', __FILE__) . ' : ' . $times . '</div>'
+        . '<div>' . __('Minuteries', __FILE__) . ' : ' . $timers . '</div></div>';
+    }
+    // Bloc à part, avec son titre comme « Entretien » : sur une tuile étroite il vient sous « Climatisation », et sans
+    // titre ses lignes sembleraient en faire partie
+    return '<div class="ms-block ms-profile-zone"><div class="ms-title"><i class="fas fa-calendar-alt"></i>' . __('Profils de charge', __FILE__) . '</div>' . $html
+      . '<details class="ms-profiles"><summary title="' . __('Cliquer pour déplier ou replier', __FILE__) . '"><i class="fas fa-chevron-right"></i>' . __('Voir tous les profils', __FILE__) . ' (' . count($profiles) . ')</summary>' . $list . '</details></div>';
+  }
+
+  // Largeur de la présentation « carte », en pixels : fixe, pour s'aligner avec d'autres cartes sur un design.
+  // Sa hauteur part de 500 pixels (feuille de style) et suit son contenu.
+  const CARD_WIDTH = 330;
+  // Couleur de fond par défaut de la carte, telle que la page de l'équipement la propose
+  const CARD_COLOR = '#142c46';
+
+  // Couleur de fond de la carte, choisie sur l'équipement : rend la classe et le style à poser sur la carte.
+  // Le fond est un dégradé de la couleur choisie vers une teinte un peu plus claire ; sur un fond clair, les textes
+  // et les voiles passent au sombre. Les couleurs sont rendues en triplets « r, g, b » : le gabarit ne doit contenir
+  // aucun croisillon. Sans choix, ou avec la couleur par défaut, la carte garde son dégradé bleu d'origine.
+  private function cardColors() {
+    $color = strtolower(trim((string) $this->getConfiguration('card_color')));
+    if (!preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/', $color, $match) || $color == self::CARD_COLOR) {
+      return array('', '');
+    }
+    $rgb = array(hexdec($match[1]), hexdec($match[2]), hexdec($match[3]));
+    $lighter = array();
+    foreach ($rgb as $channel) {
+      $lighter[] = (int) round($channel + (255 - $channel) * 0.14);
+    }
+    // Luminance perçue : au-dessus du seuil, le fond est clair
+    $light = (0.299 * $rgb[0] + 0.587 * $rgb[1] + 0.114 * $rgb[2]) > 150;
+    $style = '--msc-a:' . implode(',', $rgb) . ';--msc-b:' . implode(',', $lighter);
+    if ($light) {
+      // Une carte claire resterait claire quand Jeedom passe à son thème sombre (le soir, si l'option est activée) :
+      // elle porte donc aussi la version sombre de sa couleur, même teinte, que le gabarit applique sous ce thème
+      $style .= ';--msc-da:' . implode(',', self::shade($rgb, 0.17)) . ';--msc-db:' . implode(',', self::shade($rgb, 0.25));
+    }
+    return array($light ? 'msc-clair' : '', $style);
+  }
+
+  // Même teinte qu'une couleur (r, g, b), à la luminosité demandée (0 à 1) et avec une saturation contenue
+  private static function shade($_rgb, $_lightness) {
+    list($r, $g, $b) = array($_rgb[0] / 255, $_rgb[1] / 255, $_rgb[2] / 255);
+    $max = max($r, $g, $b);
+    $min = min($r, $g, $b);
+    $delta = $max - $min;
+    $hue = 0;
+    if ($delta > 0) {
+      if ($max == $r) {
+        $hue = fmod((($g - $b) / $delta), 6);
+      } elseif ($max == $g) {
+        $hue = (($b - $r) / $delta) + 2;
+      } else {
+        $hue = (($r - $g) / $delta) + 4;
+      }
+      $hue = fmod($hue * 60 + 360, 360);
+    }
+    $lightness = ($max + $min) / 2;
+    $saturation = ($delta == 0) ? 0 : $delta / (1 - abs(2 * $lightness - 1));
+    $saturation = min($saturation, 0.45);
+    $chroma = (1 - abs(2 * $_lightness - 1)) * $saturation;
+    $x = $chroma * (1 - abs(fmod($hue / 60, 2) - 1));
+    $m = $_lightness - $chroma / 2;
+    $sector = (int) floor($hue / 60) % 6;
+    $table = array(array($chroma, $x, 0), array($x, $chroma, 0), array(0, $chroma, $x), array(0, $x, $chroma), array($x, 0, $chroma), array($chroma, 0, $x));
+    $result = array();
+    foreach ($table[$sector] as $channel) {
+      $result[] = (int) round(($channel + $m) * 255);
+    }
+    return $result;
+  }
+
+  // Contenu de la présentation « carte ». Comme la tuile, il est entièrement produit ici à chaque régénération du
+  // widget : le gabarit n'a aucune valeur à suivre lui-même, il ne fait que brancher les boutons.
+  // Les commandes sont retrouvées par leur identifiant logique ; un élément dont la commande est masquée disparaît.
+  private function cardContent() {
+    $info = array();
+    $action = array();
+    foreach ($this->getCmd() as $cmd) {
+      if ($cmd->getIsVisible() != 1) {
+        continue;
+      }
+      if ($cmd->getType() == 'action') {
+        $action[$cmd->getLogicalId()] = $cmd;
+        continue;
+      }
+      $value = $cmd->execCmd();
+      if ($value !== '' && $value !== null) {
+        $info[$cmd->getLogicalId()] = $value;
+      }
+    }
+    $get = function ($_logicalId) use ($info) {
+      return isset($info[$_logicalId]) ? $info[$_logicalId] : null;
+    };
+    $text = function ($_logicalId) use ($info) {
+      return isset($info[$_logicalId]) ? htmlspecialchars((string) $info[$_logicalId]) : null;
+    };
+    // Bouton rond d'une commande ; sans la commande, un disque inerte qui porte seulement l'icône.
+    // Toute commande envoyée à la voiture demande une confirmation (texte dans data-ms-confirm).
+    $round = function ($_logicalId, $_icon, $_class, $_title, $_confirm) use ($action) {
+      if (!isset($action[$_logicalId])) {
+        return '<span class="msc-b msc-inerte"><i class="' . $_icon . '"></i></span>';
+      }
+      return '<button type="button" class="msc-b ' . $_class . '" title="' . $_title . '" data-ms-cmd="' . $action[$_logicalId]->getId() . '" data-ms-confirm="' . $_confirm . '"><i class="' . $_icon . '"></i></button>';
+    };
+
+    // Petit bouton de la commande opposée à celle du grand bouton ; rien si la commande n'existe pas
+    $other = function ($_logicalId, $_icon, $_title, $_confirm) use ($action) {
+      if (!isset($action[$_logicalId])) {
+        return '';
+      }
+      return '<button type="button" class="msc-b msc-petit" title="' . $_title . '" data-ms-cmd="' . $action[$_logicalId]->getId() . '" data-ms-confirm="' . $_confirm . '"><i class="' . $_icon . '"></i></button>';
+    };
+
+    // Pastille d'état
+    $pill = array('', '');
+    if ($get('unavailable_since') !== null) {
+      $pill = array(__('Données indisponibles', __FILE__), 'msc-rouge');
+    } elseif ($get('moving') == 1) {
+      $pill = array(__('En déplacement', __FILE__), 'msc-bleu');
+    } elseif ($get('charging') == 1) {
+      $pill = array(__('En charge', __FILE__), 'msc-vert');
+    } elseif ($get('plug_connected') == 1) {
+      $pill = array(__('Garée · branchée', __FILE__), '');
+    } elseif ($get('moving') !== null) {
+      $pill = array(__('Garée', __FILE__), '');
+    }
+    $refresh = isset($action['refresh']) ? '<button type="button" class="msc-b msc-mini" title="' . __('Relire le véhicule (une requête)', __FILE__) . '" data-ms-cmd="' . $action['refresh']->getId() . '"><i class="fas fa-sync"></i></button>' : '';
+    $html = '<div class="msc-head"><div class="msc-nom"><i class="fas fa-car"></i>' . htmlspecialchars($this->getName()) . '</div>'
+      . (($pill[0] == '') ? '' : '<div class="msc-pill ' . $pill[1] . '">' . $pill[0] . '</div>') . $refresh . '</div>';
+
+    // Identité : photo, modèle, compteur, états
+    $image = ($text('image') !== null) ? $text('image') : 'plugins/myskoda/plugin_info/myskoda_icon.png';
+    $render = (strpos((string) $get('image'), 'iprenders.blob.core.windows.net') !== false) ? ' msc-rendu' : '';
+    $icons = self::tileIcon($get('locked'), 'icon jeedom-lock-ferme', 'icon jeedom-lock-ouvert', __('Verrouillé', __FILE__), __('Déverrouillé', __FILE__))
+      . self::tileIcon($get('doors_closed'), 'icon jeedom-porte-ferme', 'icon jeedom-porte-ouverte', __('Portes fermées', __FILE__), __('Porte ouverte', __FILE__))
+      . self::tileIcon($get('windows_closed'), 'icon jeedom-fenetre-ferme', 'icon jeedom-fenetre-ouverte', __('Vitres fermées', __FILE__), __('Vitre ouverte', __FILE__))
+      . (($get('plug_connected') == 1) ? '<i class="fas fa-plug ms-ok" title="' . __('Câble branché', __FILE__) . '"></i>' : '')
+      . (($get('moving') == 1) ? '<i class="fas fa-road ms-info" title="' . __('En déplacement', __FILE__) . '"></i>' : '');
+    // Comme sur la tuile : l'heure de l'état du verrouillage et des ouvrants est toujours donnée, et les icônes sont
+    // estompées si cet état a plus de 24 heures de retard sur le reste
+    $statusTime = strtotime((string) $get('status_timestamp'));
+    $dataTime = strtotime((string) $get('data_timestamp'));
+    if ($icons != '' && $statusTime !== false) {
+      if ($dataTime !== false && $dataTime - $statusTime > 86400) {
+        $icons = '<span class="msc-ancien">' . $icons . '</span>';
+      }
+      $icons .= '<div class="msc-etat-date" title="' . __('Heure du dernier état envoyé par la voiture. Elle ne l\'envoie pas quand elle est verrouillée ou ouverte à l\'arrêt.', __FILE__) . '">'
+        . ((date('Y-m-d', $statusTime) == date('Y-m-d')) ? __('état de', __FILE__) . ' ' . date('H:i', $statusTime) : __('état du', __FILE__) . ' ' . date('d/m/Y H:i', $statusTime)) . '</div>';
+    }
+    $carTypes = array('ELECTRIC' => 'Électrique', 'GASOLINE' => 'Essence', 'DIESEL' => 'Diesel', 'HYBRID' => 'Hybride', 'CNG' => 'Gaz naturel', 'LPG' => 'GPL');
+    $carType = isset($carTypes[$get('car_type')]) ? __($carTypes[$get('car_type')], __FILE__) : null;
+    $html .= '<div class="msc-photo"><div class="msc-cadre' . $render . '"><img src="' . $image . '" alt=""></div><div class="msc-id">'
+      . (($text('name') !== null) ? '<div class="msc-modele">' . $text('name') . '</div>' : '')
+      . (($text('license_plate') !== null || $carType !== null) ? '<div>' . implode(' · ', array_filter(array($text('license_plate'), $carType))) . '</div>' : '')
+      . (($get('mileage') !== null) ? '<div>' . number_format((float) $get('mileage'), 0, ',', ' ') . ' km</div>' : '')
+      . '<div class="msc-icones">' . $icons . '</div></div></div>';
+
+    // Jauges : batterie (avec un repère à la limite de charge), carburant ; les deux pour un hybride rechargeable
+    $fuelRange = ($get('fuel_range') !== null) ? $get('fuel_range') : $get('total_range');
+    foreach (array(array('fas fa-car-battery', $get('battery_level'), $get('range'), $get('charge_limit')), array('fas fa-gas-pump', $get('fuel_level'), $fuelRange, null)) as $gauge) {
+      if ($gauge[1] === null) {
+        continue;
+      }
+      $level = max(0, min(100, (float) $gauge[1]));
+      $mark = ($gauge[3] !== null && $gauge[3] > 0 && $gauge[3] < 100) ? '<span style="left:' . (float) $gauge[3] . '%" title="' . __('Limite de charge', __FILE__) . '"></span>' : '';
+      $html .= '<div class="msc-jauge"><div class="msc-chiffres"><div class="msc-pct"><i class="' . $gauge[0] . '"></i>' . round($level) . '<small> %</small></div>'
+        . '<div class="msc-km">' . (($gauge[2] !== null) ? round((float) $gauge[2]) . ' km' : '') . '</div></div>'
+        . '<div class="msc-barre"><div style="width:' . $level . '%"></div>' . $mark . '</div></div>';
+    }
+
+    $blocks = '';
+    // Charge
+    $state = $get('charging_state');
+    if ($state !== null || isset($action['charge_start']) || isset($action['charge_stop'])) {
+      $charging = ($get('charging') == 1);
+      $details = array();
+      if ($state !== null && !$charging) {
+        $details[] = isset(self::$_chargingStateLabels[$state]) ? __(self::$_chargingStateLabels[$state], __FILE__) : htmlspecialchars($state);
+      }
+      if ($charging) {
+        if ($get('charge_power') !== null) {
+          $type = ($get('charge_type') !== null && $get('charge_type') != 'OFF') ? ' ' . $text('charge_type') : '';
+          $details[] = str_replace('.', ',', (string) round((float) $get('charge_power'), 1)) . ' kW' . $type;
+        }
+        if ($get('charge_rate') !== null) {
+          $details[] = '+' . round((float) $get('charge_rate')) . ' km/h';
+        }
+        if ($get('charge_time_left') !== null) {
+          $minutes = (int) $get('charge_time_left');
+          $details[] = __('reste', __FILE__) . ' ' . intdiv($minutes, 60) . ' h ' . str_pad($minutes % 60, 2, '0', STR_PAD_LEFT);
+        }
+        if ($get('fully_charged_at') !== null) {
+          $details[] = __('fin', __FILE__) . ' ' . self::tileDate($get('fully_charged_at'));
+        }
+      }
+      $button = $charging
+        ? $round('charge_stop', 'fas fa-stop', 'msc-grand msc-stop', __('Arrêter la charge', __FILE__), __('Arrêter la charge du véhicule ?', __FILE__))
+        : $round('charge_start', 'fas fa-bolt', 'msc-grand', __('Démarrer la charge', __FILE__), __('Démarrer la charge du véhicule ?', __FILE__));
+      // L'autre commande reste à portée, en petit : l'état affiché peut avoir du retard sur la voiture
+      $button .= $charging
+        ? $other('charge_start', 'fas fa-play', __('Démarrer la charge', __FILE__), __('Démarrer la charge du véhicule ?', __FILE__))
+        : $other('charge_stop', 'fas fa-stop', __('Arrêter la charge', __FILE__), __('Arrêter la charge du véhicule ?', __FILE__));
+      $list = '';
+      if (isset($action['charge_limit_set'])) {
+        $cmd = $action['charge_limit_set'];
+        $parameters = $cmd->getDisplay('parameters');
+        $step = (is_array($parameters) && isset($parameters['step'])) ? max(1, (int) $parameters['step']) : 10;
+        $options = '';
+        for ($limit = (int) $cmd->getConfiguration('minValue', 50); $limit <= (int) $cmd->getConfiguration('maxValue', 100); $limit += $step) {
+          $options .= '<option value="' . $limit . '"' . (($get('charge_limit') == $limit) ? ' selected' : '') . '>' . $limit . ' %</option>';
+        }
+        $list = '<select class="msc-liste" title="' . __('Limite de charge', __FILE__) . '" data-ms-cmd="' . $cmd->getId() . '" data-ms-confirm="' . __('Régler la limite de charge du véhicule à %s ?', __FILE__) . '">' . $options . '</select>';
+      } elseif ($get('charge_limit') !== null) {
+        $list = '<span class="msc-valeur">' . round((float) $get('charge_limit')) . ' %</span>';
+      }
+      $blocks .= '<div class="msc-bloc">' . $button . '<div class="msc-txt"><div class="msc-titre">' . ($charging ? __('Charge en cours', __FILE__) : __('Charge', __FILE__)) . '</div>'
+        . '<div class="msc-sous">' . implode(' · ', $details) . '</div></div>' . $list . '</div>';
+    }
+    // Climatisation
+    $state = $get('climate_state');
+    if ($state !== null || isset($action['climate_start']) || isset($action['climate_stop'])) {
+      $running = ($get('climate_on') == 1);
+      $details = array();
+      if ($state !== null) {
+        $details[] = isset(self::$_climateStateLabels[$state]) ? __(self::$_climateStateLabels[$state], __FILE__) : htmlspecialchars($state);
+      }
+      if ($running && $get('climate_ready_at') !== null) {
+        $details[] = __('prête à', __FILE__) . ' ' . self::tileDate($get('climate_ready_at'));
+      }
+      $button = $running
+        ? $round('climate_stop', 'fas fa-stop', 'msc-grand msc-stop', __('Arrêter la climatisation', __FILE__), __('Arrêter la climatisation du véhicule ?', __FILE__))
+        : $round('climate_start', 'fas fa-snowflake', 'msc-grand', __('Démarrer la climatisation', __FILE__), __('Démarrer la climatisation du véhicule ?', __FILE__));
+      $button .= $running
+        ? $other('climate_start', 'fas fa-play', __('Démarrer la climatisation', __FILE__), __('Démarrer la climatisation du véhicule ?', __FILE__))
+        : $other('climate_stop', 'fas fa-stop', __('Arrêter la climatisation', __FILE__), __('Arrêter la climatisation du véhicule ?', __FILE__));
+      $list = '';
+      if (isset($action['climate_temp_set'])) {
+        // La consigne est seulement mémorisée par le plugin et envoyée au prochain démarrage : pas de confirmation
+        $setpoint = is_numeric($this->getConfiguration('climate_setpoint')) ? (float) $this->getConfiguration('climate_setpoint') : (($get('target_temperature') !== null) ? (float) $get('target_temperature') : null);
+        $options = ($setpoint === null) ? '<option value="" selected>—</option>' : '';
+        for ($degree = 16.0; $degree <= 30.0; $degree += 0.5) {
+          $options .= '<option value="' . $degree . '"' . (($setpoint !== null && abs($setpoint - $degree) < 0.01) ? ' selected' : '') . '>' . str_replace('.', ',', (string) $degree) . ' °C</option>';
+        }
+        $list = '<select class="msc-liste" title="' . __('Consigne de climatisation', __FILE__) . '" data-ms-cmd="' . $action['climate_temp_set']->getId() . '">' . $options . '</select>';
+      } elseif ($get('target_temperature') !== null) {
+        $list = '<span class="msc-valeur">' . str_replace('.', ',', (string) round((float) $get('target_temperature'), 1)) . ' °C</span>';
+      }
+      $blocks .= '<div class="msc-bloc">' . $button . '<div class="msc-txt"><div class="msc-titre">' . __('Climatisation', __FILE__) . '</div>'
+        . '<div class="msc-sous">' . implode(' · ', $details) . '</div></div>' . $list . '</div>';
+    }
+
+    // Chauffage auxiliaire : seulement pour les véhicules qui en annoncent la commande
+    if (isset($action['aux_heating_start']) || isset($action['aux_heating_stop'])) {
+      $running = ($get('aux_heating_on') == 1);
+      $button = $running
+        ? $round('aux_heating_stop', 'fas fa-stop', 'msc-grand msc-stop', __('Arrêter le chauffage auxiliaire', __FILE__), __('Arrêter le chauffage auxiliaire du véhicule ?', __FILE__))
+        : $round('aux_heating_start', 'fas fa-fire', 'msc-grand', __('Démarrer le chauffage auxiliaire', __FILE__), __('Démarrer le chauffage auxiliaire du véhicule ?', __FILE__));
+      $button .= $running
+        ? $other('aux_heating_start', 'fas fa-play', __('Démarrer le chauffage auxiliaire', __FILE__), __('Démarrer le chauffage auxiliaire du véhicule ?', __FILE__))
+        : $other('aux_heating_stop', 'fas fa-stop', __('Arrêter le chauffage auxiliaire', __FILE__), __('Arrêter le chauffage auxiliaire du véhicule ?', __FILE__));
+      $blocks .= '<div class="msc-bloc">' . $button . '<div class="msc-txt"><div class="msc-titre">' . __('Chauffage auxiliaire', __FILE__) . '</div>'
+        . '<div class="msc-sous">' . (($get('aux_heating_on') === null) ? '' : ($running ? __('En marche', __FILE__) : __('Arrêté', __FILE__))) . '</div></div></div>';
+    }
+    // Profils de charge : le même bloc que sur la tuile (profil du lieu, prochaine charge, liste à déplier)
+    $blocks .= $this->tileChargingProfiles();
+
+    // Entretien : toutes les échéances saisies
+    $services = array();
+    foreach (self::$_services as $key => $label) {
+      $parts = array();
+      if ($get('service_' . $key . '_km') !== null) {
+        $parts[] = self::serviceText((float) $get('service_' . $key . '_km'), 'km', __('en retard de %s km', __FILE__));
+      }
+      if ($get('service_' . $key . '_days') !== null) {
+        $parts[] = self::serviceText((float) $get('service_' . $key . '_days'), __('jours', __FILE__), __('en retard de %s jours', __FILE__));
+      }
+      if (count($parts) > 0) {
+        $services[__($label, __FILE__)] = implode(' · ', $parts);
+      }
+    }
+    if (count($services) > 0) {
+      $blocks .= '<div class="ms-block"><div class="ms-title"><i class="fas fa-wrench"></i>' . __('Entretien', __FILE__) . '</div>';
+      foreach ($services as $label => $value) {
+        $blocks .= '<div class="msc-ligne"><span>' . $label . '</span><b>' . $value . '</b></div>';
+      }
+      $blocks .= '</div>';
+    }
+    if ($blocks != '') {
+      $html .= '<div class="msc-sep"></div>' . $blocks . '<div class="msc-sep"></div>';
+    }
+
+    // Pied : alertes, lieu, heure du relevé, quota
+    $foot = '';
+    if ($get('unavailable_since') !== null) {
+      $foot .= '<div class="msc-alerte"><i class="fas fa-exclamation-triangle"></i>' . __('Škoda ne fournit plus les données du véhicule depuis', __FILE__) . ' ' . self::tileDate($get('unavailable_since')) . '. '
+        . __('Les valeurs affichées sont les dernières reçues.', __FILE__) . '</div>';
+    }
+    if ($text('services_disabled') !== null) {
+      $foot .= '<div class="msc-alerte"><i class="fas fa-exclamation-triangle"></i>' . __('Données désactivées', __FILE__) . ' : ' . $text('services_disabled') . '</div>';
+    }
+    if ($text('service_alert') !== null) {
+      $foot .= '<div class="msc-alerte"><i class="fas fa-exclamation-triangle"></i>' . __('À prévoir', __FILE__) . ' — ' . $text('service_alert') . '</div>';
+    }
+    $place = ($text('place') !== null) ? $text('place') : $text('address');
+    if ($place !== null) {
+      $foot .= '<div><i class="fas fa-map-marker-alt"></i>' . $place . '</div>';
+    }
+    if ($get('data_timestamp') !== null) {
+      $foot .= '<div><i class="fas fa-clock"></i>' . __('Relevé de la voiture', __FILE__) . ' : ' . self::tileDate($get('data_timestamp')) . '</div>';
+    }
+    if ($get('api_quota_remaining') !== null) {
+      $foot .= '<div><i class="fas fa-exchange-alt"></i>' . __('Requêtes restantes cette heure', __FILE__) . ' : ' . (int) $get('api_quota_remaining') . '</div>';
+    }
+    return $html . '<div class="msc-pied">' . $foot . '</div>';
   }
 
   private function tileTags() {
@@ -2155,6 +2662,9 @@ class myskoda extends eqLogic {
     if ($buttons != '') {
       $charge .= '<div class="ms-actions">' . $buttons . '</div>';
     }
+    // Profils de charge : sous les colonnes « Charge » et « Climatisation », sur toute la largeur. Dans la colonne
+    // « Charge », deux fois plus étroite sur une tuile large, le bandeau et les plages horaires passaient à la ligne.
+    $tags['#ms_profiles#'] = $this->tileChargingProfiles();
     $tags['#ms_charge#'] = ($charge == '') ? '' : '<div class="ms-block"><div class="ms-title"><i class="fas fa-charging-station"></i>' . __('Charge', __FILE__) . '</div>' . $charge . '</div>';
 
     $climate = '';

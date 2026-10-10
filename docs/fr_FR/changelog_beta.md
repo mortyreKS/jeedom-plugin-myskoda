@@ -4,7 +4,7 @@
 >
 >Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, l'affichage des profils de charge et la présentation « Carte » d'une électrique (nouveautés de la 0.8, mises au point sur des données d'exemple). Les retours sont les bienvenus.
 
-# 0.9 — 10/10/2026
+# 0.81 — 10/10/2026
 
 - Dashboard : en dépliant « Voir tous les profils », la tuile restait à sa hauteur d'origine et la liste était coupée (en présentation « Carte », elle débordait sur la tuile du dessous). La tuile s'agrandit maintenant et le dashboard se range de nouveau. Corrige aussi le bas de la tuile parfois rogné de quelques lignes quand la photo du véhicule se chargeait après l'affichage.
 

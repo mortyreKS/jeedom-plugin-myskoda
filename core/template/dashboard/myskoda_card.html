@@ -121,6 +121,26 @@
           ask(text.replace('%s', select.options[select.selectedIndex].text), function() { send(select, value) }, function() { select.value = shown })
         })
       })
+      // Sur le dashboard, Jeedom fige la hauteur d'une tuile au moment où il la place : si son contenu grandit ensuite
+      // (liste des profils de charge dépliée, photo chargée après coup), il serait coupé ou déborderait sur la tuile
+      // voisine. La tuile est alors remesurée et le dashboard rangé de nouveau. Ailleurs (design, panneau du plugin,
+      // version mobile), rien n'est figé : il n'y a rien à faire.
+      var host = card.closest('.eqLogic')
+      var fit = function() {
+        try {
+          if (!host || !document.body.contains(host) || !host.classList.contains('jeedomAlreadyPosition')) return
+          if (!window.jeedomUtils || typeof jeedomUtils.positionEqLogic != 'function') return
+          host.style.height = 'auto'
+          jeedomUtils.positionEqLogic(host.getAttribute('data-eqLogic_id'), false)
+          // Rang de hauteur que Jeedom réutilise quand la fenêtre change de taille
+          var step = (jeedomUtils.tileHeightSteps || []).indexOf(parseInt(host.style.height) + parseInt(jeedom.theme['widget::margin']))
+          if (step >= 0) host.dataset.stepHeight = step
+          var grid = host.closest('.div_displayEquipement')
+          if (grid && window.Packery && Packery.data(grid)) Packery.data(grid).layout()
+        } catch (error) {}
+      }
+      card.querySelectorAll('details').forEach(function(list) { list.addEventListener('toggle', fit) })
+      card.querySelectorAll('img').forEach(function(image) { if (!image.complete) image.addEventListener('load', fit) })
     })()
   </script>
 </div>

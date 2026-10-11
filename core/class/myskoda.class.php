@@ -1084,9 +1084,11 @@ class myskoda extends eqLogic {
   public static function getVersionLabel() {
     $info = json_decode((string) @file_get_contents(dirname(__FILE__) . '/../../plugin_info/info.json'), true);
     $label = (is_array($info) && isset($info['pluginVersion'])) ? $info['pluginVersion'] : '?';
+    // Le numéro est suivi de la branche installée : « dev » pour la branche de mise au point, « beta » sinon, rien en stable
     $update = update::byTypeAndLogicalId('plugin', __CLASS__);
-    if (!is_object($update) || $update->getConfiguration('version', 'beta') != 'stable') {
-      $label .= ' beta';
+    $branch = is_object($update) ? (string) $update->getConfiguration('version', 'beta') : 'beta';
+    if ($branch != 'stable') {
+      $label .= ($branch == 'dev') ? ' dev' : ' beta';
     }
     return $label;
   }

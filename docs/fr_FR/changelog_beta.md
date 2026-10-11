@@ -9,7 +9,8 @@
 - Le plugin est disponible en anglais. Dans un Jeedom réglé en anglais (Réglages → Système → Configuration → Général → Langue), la tuile, la carte, le journal de bord, la page des véhicules et la configuration du plugin s'affichent en anglais, avec les mots de l'application MyŠkoda en anglais quand ils existent (« Inspection », « Oil change », « Boot », « Bonnet », « Smart home »…). Les dates suivent la langue, les nombres s'écrivent avec un point décimal, et l'export pour Excel sépare alors ses colonnes par des virgules. Dans un Jeedom en français, rien ne change.
 - Documentation : la rubrique « Commandes » donne maintenant la liste complète des commandes, une par une, avec leur nom exact, leur type et ce qu'elles valent (états possibles de la charge et de la climatisation, bornes des réglages), rangées par thème. Utile pour écrire un scénario.
 - Cette version n'apporte aucune nouvelle fonction : elle ajoute l'anglais et complète la documentation.
-- Ce qui reste en français pour l'instant : la documentation et le journal des versions, le rapport de diagnostic et les lignes du log du plugin.
+- La documentation existe aussi en anglais : les boutons « Documentation » et « Changelog » de Jeedom l'ouvrent dans la langue de Jeedom. Le journal des versions anglais résume les versions précédentes.
+- Ce qui reste en français pour l'instant : le rapport de diagnostic, les lignes du log du plugin et les captures d'écran de la documentation.
 - À savoir : le nom d'une commande est donné une fois pour toutes, dans la langue de Jeedom au moment où le véhicule est ajouté ; changer de langue ensuite ne renomme pas les commandes existantes.
 - Essayé sur la box en forçant l'anglais pour un essai (libellés, jours, nombres, scripts contrôlés dans les deux langues) ; pas encore vu à l'écran sur un Jeedom réglé en anglais.
 

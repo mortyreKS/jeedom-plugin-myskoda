@@ -6,7 +6,7 @@ Suivi et pilotage d'un véhicule Škoda par l'API publique officielle MyŠkoda.
 
 Prérequis : Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie (elle n'est plus maintenue depuis le 31 août 2026) : la logique est de passer à Debian 12 au minimum. Pour autant, le plugin y fonctionne aujourd'hui : un testeur fait tourner la version 0.81 sous Debian 11.11 avec PHP 7.4.33 (installation, mise à jour, lecture du véhicule, points de recharge, rapport de diagnostic). Le plugin n'a ni démon ni dépendance.
 
-Langues : français et anglais. L'écran suit la langue de Jeedom (Réglages → Système → Configuration → Général) ; cette documentation, le rapport de diagnostic et le log restent en français. Le nom des commandes est donné dans la langue de Jeedom au moment où le véhicule est ajouté.
+Langues : français et anglais. L'écran suit la langue de Jeedom (Réglages → Système → Configuration → Général) ; cette documentation existe dans les deux langues, et les boutons « Documentation » et « Changelog » de Jeedom l'ouvrent dans la langue de Jeedom ; le rapport de diagnostic et le log restent en français. Le nom des commandes est donné dans la langue de Jeedom au moment où le véhicule est ajouté.
 
 ## Mise en service
 

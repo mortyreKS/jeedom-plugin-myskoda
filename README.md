@@ -6,7 +6,7 @@ Suivi et pilotage des véhicules Škoda dans Jeedom par l'[API publique officiel
 
 ## Langues
 
-Français et anglais : l'écran suit la langue de Jeedom. La documentation est en français.
+Français et anglais : l'écran et la documentation suivent la langue de Jeedom. English documentation: [docs/en_US/index.md](docs/en_US/index.md).
 
 ## Prérequis
 
@@ -31,7 +31,7 @@ Si « Github » n'apparaît pas dans les types de source, activez-le d'abord dan
 - [Documentation](docs/fr_FR/index.md)
 - [Journal des versions de la beta](docs/fr_FR/changelog_beta.md)
 
-Les pages du dossier `aide/` sont ces mêmes documents convertis en HTML. Elles servent aux boutons « Documentation » et « Changelog » de Jeedom, qui interdit l'accès web aux dossiers `docs/` des plugins ; elles sont donc toujours celles de la version installée.
+Les pages du dossier `aide/` sont ces mêmes documents, en français et en anglais, convertis en HTML. Elles servent aux boutons « Documentation » et « Changelog » de Jeedom, qui interdit l'accès web aux dossiers `docs/` des plugins ; elles sont donc toujours celles de la version installée.
 
 ## Composants tiers
 

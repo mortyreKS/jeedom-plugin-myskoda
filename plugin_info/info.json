@@ -12,10 +12,10 @@
   "os": {
     "min": 12
   },
-  "documentation": "plugins/myskoda/aide/fr_FR/index.html",
-  "documentation_beta": "plugins/myskoda/aide/fr_FR/index.html",
-  "changelog": "plugins/myskoda/aide/fr_FR/changelog.html",
-  "changelog_beta": "plugins/myskoda/aide/fr_FR/changelog_beta.html",
+  "documentation": "plugins/myskoda/aide/#language#/index.html",
+  "documentation_beta": "plugins/myskoda/aide/#language#/index.html",
+  "changelog": "plugins/myskoda/aide/#language#/changelog.html",
+  "changelog_beta": "plugins/myskoda/aide/#language#/changelog_beta.html",
   "category": "devicecommunication",
   "hasDependency": false,
   "hasOwnDeamon": false,

@@ -1,0 +1,264 @@
+# MySkoda plugin
+
+Monitoring and control of a Škoda vehicle through the official public MyŠkoda API.
+
+> Documentation of the plugin in version 0.83 beta, published on 11/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
+
+Requirements: Jeedom 4.4 or later (the plugin is tested on Jeedom 4.6), on Debian 12 or Debian 13. Debian 11 has reached end of life (it has not been maintained since 31 August 2026): the sensible path is to move to Debian 12 at least. That said, the plugin works on it today: a tester runs version 0.81 on Debian 11.11 with PHP 7.4.33 (installation, update, vehicle reading, charging locations, diagnostic report). The plugin has no daemon and no dependency.
+
+Languages: French and English. The screens follow the Jeedom language (Settings → System → Configuration → General). The diagnostic report and the plugin log stay in French. Command names are given in the Jeedom language at the time the vehicle is added. The screenshots in this documentation were taken in French.
+
+## Getting started
+
+### 1. Create a key in the MyŠkoda app
+
+On the phone, in the MyŠkoda app: Profile, then Smart home. Create a key and copy it.
+
+![Smart home screen of the MyŠkoda app](../fr_FR/images/cle-api.png)
+
+This screen lists your keys (five at most), lets you create one and shows the vehicle identification number (VIN), to be copied for step 3. A key is valid for the vehicles selected when it was created, and it expires: its end date is shown under its name.
+
+### 2. Enter the key in Jeedom
+
+In the plugin configuration, paste the key. The two reading rates (while parked and while charging, and while driving) can be left as they are.
+
+### 3. Add the vehicle
+
+In the plugin, click “Add a vehicle” and enter its VIN (17 characters). The plugin checks with Škoda that the key covers this vehicle, then creates the device, named after the designation Škoda gives the vehicle, in the Energy category. Adding it costs two requests from the hourly quota: the check, then the first reading. All that is left is to choose its parent object.
+
+Škoda does not let a plugin list the vehicles of an account: this is why the VIN is asked for, once per vehicle.
+
+Commands are created at the first reading, done as soon as the vehicle is added: only those the vehicle provides are created. Some are created hidden (cable locked, boot, bonnet, lights, charging mode, key expiry…): tick their “Show” box to make them visible.
+
+> **PLEASE READ: the logbook starts empty.**
+> **Škoda provides no history to plugins. Trips, charging sessions, refuelling and statistics are rebuilt by the plugin from what it reads itself, starting from its installation. Right after installation these tabs are therefore empty: they fill up as you drive. The history shown by the MyŠkoda app is not imported.**
+
+## Commands
+
+The plugin creates the commands at the first reading, according to what the vehicle provides: an electric car has no fuel commands, a combustion car has no charging commands, and an action command only exists if Škoda announces it for that vehicle. The lists below give the name of each command as created in a Jeedom set to English, its type, and its value. A binary command is 1 for yes and 0 for no. Dates are written `YYYY-MM-DD HH:MM:SS`, in Jeedom time. When a state is given “as sent by Škoda”, the value is an upper-case English word; the tile shows it in plain words.
+
+### Vehicle
+
+- **Name** (info/string): name given to the vehicle in the MyŠkoda app.
+- **Number plate** (info/string): number plate.
+- **Engine** (info/string): `ELECTRIC`, `GASOLINE`, `DIESEL`, `HYBRID`, `CNG` or `LPG`.
+- **Picture** (info/string): address of the vehicle picture provided by Škoda.
+- **Mileage** (info/numeric, km, history logged): odometer reading.
+- **Last data sent by the vehicle** (info/string): date of the most recent data sent by the car, all data combined.
+
+### Battery and charging
+
+- **Battery** (info/numeric, %, history logged): battery level.
+- **Electric range** (info/numeric, km, history logged): remaining range on the battery.
+- **Charging** (info/binary, history logged): 1 while the car is charging.
+- **Charging state** (info/string): as sent by Škoda: `CONNECT_CABLE` (cable unplugged), `READY_FOR_CHARGING` (ready to charge), `CHARGING` (charging), `CONSERVING` (maintaining charge), `DISCHARGING` (discharging), `CHARGING_INTERRUPTED` (charging interrupted).
+- **Charging power** (info/numeric, kW, history logged): power of the charging session in progress.
+- **Charging speed** (info/numeric, km/h): range gained per hour of charging.
+- **Remaining charging time** (info/numeric, min): minutes left before charging ends.
+- **Estimated end of charging** (info/string): expected date of the end of charging.
+- **Charging type** (info/string): type of the charging session in progress, as sent by Škoda.
+- **Cable plugged in** (info/binary, history logged): 1 when the cable is plugged in.
+- **Cable locked** (info/binary): 1 when the cable is locked on the car.
+- **Charge limit** (info/numeric, %): level at which charging stops.
+- **Charging mode** (info/string): as sent by Škoda, for example `MANUAL`.
+- **Battery care** (info/binary): 1 when the battery care mode is enabled.
+- **Charging current** (info/string): charging current setting, as sent by Škoda.
+- **Maximum charging current** (info/numeric, A): maximum current in amperes.
+- **Start charging** (action/other): starts charging.
+- **Stop charging** (action/other): stops charging.
+- **Set charge limit** (action/slider): from 50 to 100 %, in steps of 10.
+- **Select charging mode** (action/select): among the modes the vehicle offers.
+
+### Charging locations
+
+The four “Charging location…” commands exist if charging locations are defined in the MyŠkoda app.
+
+- **In a saved location** (info/binary): 1 when the car is parked in a location saved in the app.
+- **Current charging location** (info/string): name of the charging location where the car is parked; empty elsewhere.
+- **Charging location: limit** (info/numeric, %): charge limit of this location.
+- **Charging location: minimum charge** (info/numeric, %): level below which the car charges straight away.
+- **Charging location: next charge** (info/string): time of the next charge, when Škoda provides it.
+
+### Air conditioning, heating and ventilation
+
+- **Air conditioning active** (info/binary, history logged): 1 while the air conditioning is heating, cooling or ventilating.
+- **Air conditioning state** (info/string): as sent by Škoda: `OFF`, `COOLING`, `HEATING`, `HEATING_AUXILIARY`, `VENTILATION`, `COMPLETED`.
+- **Target temperature** (info/numeric, °C): requested temperature.
+- **Target temperature reached at** (info/string): date at which the target temperature should be reached.
+- **Air conditioning without external power allowed** (info/binary): the car's own setting, when it reports it (see below).
+- **Windscreen heating**, **Rear window heating** (info/binary): 1 while the heating is on.
+- **Start air conditioning** (action/other): starts the air conditioning at the current target temperature.
+- **Start air conditioning at** (action/slider): starts it at the chosen temperature, from 16 to 30 °C in steps of 0.5.
+- **Set air conditioning target temperature** (action/slider): changes the target temperature, from 16 to 30 °C in steps of 0.5.
+- **Stop air conditioning** (action/other): stops the air conditioning.
+- **Auxiliary heating state** (info/string): as sent by Škoda.
+- **Auxiliary heating active** (info/binary): 1 while the auxiliary heating is running.
+- **Start auxiliary heating**, **Stop auxiliary heating** (action/other): starting requires the S-PIN code (see below).
+- **Ventilation state** (info/string): as sent by Škoda.
+- **Start ventilation**, **Stop ventilation** (action/other).
+
+### Locking and openings
+
+- **Locked** (info/binary, history logged): 1 when the car is locked.
+- **Doors closed**, **Windows closed**, **Boot closed**, **Bonnet closed**, **Sunroof closed** (info/binary): 1 when everything is closed.
+- **Lights on** (info/binary): 1 when lights are on.
+- **Lock and openings data time** (info/string): date of the last status sent by the car.
+
+### Position
+
+- **Driving** (info/binary, history logged): 1 while the car is driving, 0 when it is parked.
+- **Latitude**, **Longitude** (info/numeric, history logged): parking position.
+- **Position** (info/string): latitude and longitude separated by a comma.
+- **Parking address** (info/string): address given by Škoda.
+- **Place** (info/string): name of the place if you gave it one in the “Places” tab, otherwise its address.
+
+### Fuel
+
+- **Fuel** (info/numeric, %, history logged): fuel tank level.
+- **Fuel range** (info/numeric, km, history logged): remaining range on fuel.
+- **Total range** (info/numeric, km, history logged): total range, fuel and battery for a hybrid.
+- **AdBlue range** (info/numeric, km): remaining AdBlue range.
+
+### Service
+
+These commands exist once you have entered the due dates on the vehicle page (see “Service”).
+
+- **Inspection: kilometres left**, **Inspection: days left** (info/numeric).
+- **Oil change: kilometres left**, **Oil change: days left** (info/numeric).
+- **Roadworthiness test: days left** (info/numeric).
+- **Service due soon** (info/string): empty as long as no due date is close; otherwise the name of each service due, followed by what is left.
+
+### Plugin monitoring
+
+- **Refresh** (action/other): re-reads the vehicle right away (one request).
+- **Requests left** (info/numeric): requests still allowed by Škoda for the current hour.
+- **Key expiry** (info/string): end date of the API key validity.
+- **Services disabled** (info/string): empty in normal times; otherwise the list of data Škoda reports as disabled on the vehicle.
+- **Škoda data unavailable since** (info/string): empty in normal times; otherwise the date since which Škoda has not been answering.
+
+### Using the commands
+
+A command is sent to the vehicle; its effect shows at the next re-reading, one minute later. This delay is set in the plugin configuration (“Re-reading after a command”, from 20 seconds to 2 minutes): shorter, the state follows faster in a scenario; too short, the car has not answered yet and the state will only change at the following reading.
+
+**Heating the car before leaving.** On an electric vehicle, this is the “Start air conditioning” command (or “Start air conditioning at”, with a temperature): it heats or cools the cabin according to the target temperature, and requires no code. It can be used in a scenario, for example in the morning if the outside temperature is low.
+
+**Preheating with the car unplugged: you decide.** By default, the plugin asks for nothing in particular: if the car is not plugged in, its own setting (in the car or in the MyŠkoda app) decides whether it heats on its battery or refuses. When the vehicle reports this setting, the info command “Air conditioning without external power allowed” shows it; not all do (an Elroq, for example, does not send it). To have the plugin itself ask for heating on battery power, tick the box “Allow air conditioning on battery power, car not plugged in” on the device page. It is unticked by default, so that a scenario never uses up your range without you having wanted it: heating on the battery reduces the range available when you leave.
+
+**Auxiliary heating and S-PIN code.** Some combustion and hybrid vehicles have an auxiliary heating (parking heater). Škoda requires the S-PIN code to start it. This code is specific to each vehicle and to its primary user: enter it on the vehicle's device page, field “S-PIN code of this vehicle”. It is stored encrypted in Jeedom and is never written to the logs. The “Start auxiliary heating” and “Stop auxiliary heating” commands only appear if the vehicle is equipped with it; the heating duration is the one set on the vehicle. It is the only command that requires this code.
+
+## Tile
+
+The tile shows the vehicle picture provided by Škoda, the states (locking, doors, windows, cable), the battery and range, charging and air conditioning with their buttons, and the parking address.
+
+![Tile of an electric vehicle: battery, charging, air conditioning](../fr_FR/images/ecran-tuile-electrique.png)
+
+![Tile of an Elroq while charging, on a phone: power, gain, time left, estimated end (screenshot from a tester)](../fr_FR/images/ecran-tuile-en-charge.png)
+
+![Tile of a combustion vehicle: fuel, service](../fr_FR/images/ecran-tuile-thermique.png)
+
+On these screenshots, the addresses, the number plate and the places are examples.
+
+- Each element follows the “Show” box of its command: unticking it removes it from the tile.
+- A combustion car shows a fuel gauge instead of the battery.
+- The time of the lock and openings status is always shown under the icons; if this status is more than 24 hours behind the rest, the icons are dimmed.
+- Charging details (power, gain, time left, estimated end) only appear during a charging session.
+- The charge limit is set directly in the list on the tile.
+- Charging locations (electric and plug-in hybrid vehicles): if you have defined charging locations in the MyŠkoda app (one charging setting per saved location; the Škoda API calls them “charging profiles”), the tile shows, in a “Charging locations” block, the “Current location”, the one where the car is parked, and, when Škoda provides it, its next charge. The “See all locations” bar, which expands with a click, lists each charging location: charge limit, minimum charge (below it, the car charges straight away), active preferred charging times and departure times. This is read-only: charging locations are changed in the MyŠkoda app. To remove them from the tile, untick “Show” on the “Current charging location” command. Four info commands can be used in scenarios: “Current charging location” (empty when the car is in no saved location), “Charging location: limit”, “Charging location: minimum charge” and “Charging location: next charge”.
+- The air conditioning target temperature is set the same way, in the “Target temperature” list. Škoda does not allow changing the temperature alone: it is only sent at start-up. The chosen value is therefore kept by the plugin and sent when you press “Start”; if the air conditioning is already running, it is restarted at the new temperature. As long as you have not chosen anything, the list shows the car's target temperature. Once chosen, the target temperature (from 16 to 30 °C, in half degrees) is sent at every start of the air conditioning, including from a scenario. In a scenario, the “Set air conditioning target temperature” command does the same, and “Start air conditioning at” starts directly at a given temperature.
+- Charging power: the tile shows the value sent by the car, to a tenth of a kW; the MyŠkoda app rounds it to the whole kW, hence a possible slight difference.
+- “Card” layout: on the device page, “Tile layout” offers “Tile (default)” or “Card”. The card has a fixed width (330 pixels, height according to content, 500 at least) and a coloured background, meant for a design; it replaces the Jeedom frame and title bar. It carries everything the tile carries, laid out differently: the vehicle state in a badge, the battery or fuel in large figures with a mark at the charge limit, a large round button for charging, air conditioning and auxiliary heating (start or stop according to the state, the opposite command staying next to it in small), the charging locations, the service, the place and the quota. On the card, every command sent to the car asks for confirmation: charging, air conditioning, auxiliary heating, charge limit. “Card background colour”, on the same page, chooses the colour: the background is a gradient of it, and the text turns dark on a light colour. If you chose a light colour, the card takes the dark version of that colour when Jeedom switches to its dark theme (in the evening, if the option is enabled in the Jeedom settings); a dark card stays the same day and night. As on the tile, unticking “Show” on a command removes it from the card.
+
+![“Card” layout of an electric vehicle (example values)](../fr_FR/images/ecran-presentation-carte.png)
+
+- To go back to the standard Jeedom display: advanced configuration of the device, Information tab, “Widget template” option.
+
+## Logbook (panel)
+
+**The logbook starts empty when the plugin is installed and builds up as you drive: Škoda provides no history.**
+
+Enable “Show the desktop panel” in the plugin configuration: a MySkoda entry appears in the Home menu. “Show the mobile panel” does the same in the mobile app and the mobile version of Jeedom. The logbook is the same on both. The mobile version of Jeedom has no settings page: adding a vehicle and configuring the plugin are done in the desktop version, to which two buttons, “Vehicles” and “Configuration”, link at the bottom of the mobile logbook, for administrators.
+
+With several vehicles, a row of buttons at the top of the logbook selects the one you are looking at: every tab applies to that vehicle. The logbook adapts to its energy: battery, kWh and charging sessions for an electric car; fuel, litres and refuelling for a combustion car. For a plug-in hybrid, two buttons, “Electric view” and “Fuel view”, select the energy shown.
+
+- **Vehicle**: the tile of the selected car, with its buttons, as on the dashboard.
+- Top right, for administrators: shortcuts to the devices and to the plugin configuration.
+- **Day**: current state of the vehicle (parked, driving or charging, since when and where), summary of the day (time parked; trips: duration, distance, average speed, consumption; charging: duration, range and energy gained, cost), battery curve and timeline from midnight to midnight, then one card per trip and per charging session with the places. The arrows move from one day to the next.
+- **Map**: known parking places, current position, trips and charging sessions of the selected day. If the car has not been driven today, the map opens on the last day it was driven. Places are managed in the “Places” tab. The map background comes from OpenStreetMap: to display it, your browser queries the OpenStreetMap servers, which therefore see the area being viewed. Nothing else is transmitted, and no vehicle data is sent to them by the plugin.
+- **Trips**: table over a period, with departure and arrival places.
+- **Charging** (electric): table over a period, with monthly totals, average power, price and cost.
+- **Refuelling** (combustion): a refuelling is detected when the fuel level rises by at least 5 points between two readings; table with place, quantity, price and cost.
+- **Statistics**: over a period (7 days, 30 days, 12 months, “This year” or free dates), the key figures (distance, trips, average speed and consumption, energy consumed and charged, costs), five bar charts per day or per month (distance, consumption, energy charged, driving time, average speed) and a table by month.
+
+![Day tab: summary of the day, level curve, timeline and trip cards](../fr_FR/images/ecran-journee.png)
+
+![Map tab: places, trips of the day and round trip](../fr_FR/images/ecran-carte.png)
+
+![Trips tab: table over a period](../fr_FR/images/ecran-trajets.png)
+
+![Charging tab: table with totals, price and cost](../fr_FR/images/ecran-recharges.png)
+
+![Statistics tab: key figures, bar charts and table by month](../fr_FR/images/ecran-statistiques.png)
+
+The Trips, Charging and Statistics tabs have an **Export (Excel)** button: it produces a CSV file that Excel and LibreOffice open directly, with one row per trip, per charging session or per month.
+
+Trips and charging sessions are rebuilt from the Jeedom history of the “Driving” and “Charging” commands. The car sends its data to Škoda at departure and at arrival; the plugin dates each value with the time of that transmission, so trip times are exact whatever the reading rate. A trip made entirely between two readings is detected from the mileage increase: its distance is right, its duration is shown as unknown.
+
+**Short stops.** Škoda only gives the last known state of the vehicle, with no history. A stop of a few minutes (dropping someone off, picking up a parcel) that starts and ends between two plugin readings is therefore not seen: several short trips in a row appear as one, whose distance and departure and arrival times remain right. While driving, the plugin reads every 5 minutes by default, and keeps this rate for 10 minutes after stopping and after the start or end of a charging session; this rate is set in the plugin configuration, within the limit of 20 requests per hour imposed by Škoda. **Do not untick the “Log history” box of the plugin commands, and do not change their history mode**: the logbook is entirely drawn from the Jeedom history. Without it, it stays empty, and what was not logged cannot be rebuilt afterwards. The commands needed are: Driving, Mileage, Latitude, Longitude, Battery and Electric range (or Fuel and Fuel range), Charging and Charging power, as well as Cable plugged in if the “Managed charging” option is ticked. If one of them is no longer logged, the logbook says so at the top of the page. The volume is small: a value is only recorded when the car sends new data.
+
+Places are the parking addresses given by Škoda, which the plugin remembers as the car stops. Škoda gives no position while a vehicle is driving: on the map, a trip is a straight line between its start and its end, not its route. For the same reason, a round trip without a stop (the car comes back to park where it left from) has no line: it is shown as a dashed blue circle around the place, and its distance is that of the odometer.
+
+Two parking stops less than 60 metres apart are the same place. The position sent by the car is not always exact: it can be off by more than a hundred metres while the car is parked in the same spot, which creates a second place.
+
+**“Places” tab: your favourite places.** This tab of the logbook gathers everything about places: their map, adding a favourite and the list of known places. A favourite (Home, Work, School…) attaches to itself every parking stop made within its radius, and its address no longer changes. Only Jeedom administrators can change places; other users see the list without being able to change it.
+
+![Places tab: map of favourites with their radius, adding a favourite and list of places](../fr_FR/images/ecran-lieux.png)
+
+To add a favourite, give it a name, then place its point in one of these ways: type its address and click “Search for the address”, or click directly on the map at the desired spot (another click corrects the point), and finish with “Save this favourite”. The address you type is the one that will be displayed: this is the way to get the right address when the one Škoda gives for your home is wrong. The address search is done by your Jeedom with the OpenStreetMap service, only when you click the button; clicking the map sends nothing.
+
+To review a place already saved, click its point on the map or the target-shaped button on its row, after the address: the map zooms in and shows its location in red. A click on the map moves it; “Confirm this point and check its address” confirms, “Cancel” leaves the place as it is. On confirmation, whether the point moved or not, your Jeedom asks the OpenStreetMap service for the address of this point and suggests it to you if it differs from the displayed address: you save with this address, or you keep the current address. This is the way to correct a well-placed place whose address is wrong. If the address is not found, only the position is saved.
+
+An ordinary place lying within the radius of a favourite is no longer used: parking stops made there are attached to the favourite. If you gave it neither a name, nor a price, nor an address, it is removed from the list. Otherwise it is kept with the mention “covered by the favourite”, and it is up to you to delete it or to reduce the radius of the favourite.
+
+The list has two parts. “My favourites” comes first: you put them in the order you want by dragging them with the handle with horizontal lines, at the start of the row, or with the arrows placed in the row settings, and each favourite has its colour, chosen from a list and used on the logbook maps (Home in green, School in red…). “Other places where the car has stopped” comes next, most recent first; beyond six, the oldest are folded behind a button.
+
+Each row shows the essentials: the colour, the star, the name, the address and the target that opens the place on the map. Less common settings follow: the price per kWh or per litre at this place, the radius and colour of a favourite, deletion. On a computer screen they are always visible, further along the row; on a phone, they unfold with the arrow at the end of the row.
+
+A place already known becomes a favourite by giving it a name and clicking its star, which turns yellow; a second click removes it from the favourites. Its address is corrected in the list; a corrected address is no longer replaced by Škoda's. The general radius of favourites is set in the plugin configuration (200 metres by default); each favourite can have its own (from 10 to 5,000 metres), wider in the countryside or for an underground car park where the position is imprecise, tighter in town. If Jeedom knows the coordinates of your home (general Jeedom configuration), a button offers to create the “Home” favourite at that spot, with nothing to type.
+
+The “Name” field offers the list of names already given: to give another place the name of an existing place, pick it from this list rather than typing it again. Two places with the same name are shown under that name and count as one place in trips; each keeps its own price, and only the one marked with a star has a radius. The “Delete this place” button (bin), in the row settings, removes a place created by mistake; trips already recorded are not changed. The plugin keeps 300 places per vehicle; deleting a device erases its places.
+
+The name given to a place replaces its address in the logbook and on the tile. The “Place” command carries it too: it can be used as a trigger or a condition in a scenario (for example “Place” equal to “Home”).
+
+**Charging driven by a scenario (solar surplus, home battery, off-peak hours).** By default, the logbook counts one charging session each time the car starts charging. If a scenario starts and stops charging throughout the day, for example to follow solar panel production, this gives a multitude of small sessions, whose energy cannot be calculated. In that case, tick the box of the “Managed charging” field (“Charging driven by a scenario”) on the device page of the vehicle concerned: the logbook then counts **a single charging session per cable connection**, all resumptions included. It shows the actual charging time, the number of resumptions and the time the cable stayed plugged in; energy, average power and cost are calculated over the whole. For an ordinary session, done in one go, the option changes nothing. It also applies to sessions already recorded, provided the “Cable plugged in” command was logged on those days: a session made without that history stays counted resumption by resumption. It can be unticked without losing anything. For these scenarios, see also the “Re-reading after a command” setting in the plugin configuration.
+
+**Consumption.** Škoda only gives the battery or fuel level as a whole percentage. A consumption figure is therefore only shown if the level dropped by at least 5 points: for a single trip, this requires a fairly long trip; for a day, a month or a period, the calculation covers the total (what was consumed, divided by the distance), which makes it reliable. In the Charging or Refuelling tab, each row also gives the distance driven and the consumption since the previous charging session or refuelling: this is the most accurate figure.
+
+Values that Škoda does not provide must be entered to get all the figures: on the device, the **usable battery capacity** (for kWh) or the **fuel tank capacity** (for litres); and the **price per kWh** or **per litre of fuel** (for costs). The price is entered in two places: a general price in the plugin configuration, and, in the “Places” tab, a price specific to a place (your home, a public charger), in the “Price per kWh here” or “Price per litre here” setting of its row. For fuel, a price per litre can also be entered on a vehicle's device: it then replaces the general price for that vehicle. A charging session is counted at the price of the place where it was done, failing that at the general price; the cost of a trip is estimated at the general price.
+
+## Service
+
+Škoda sends plugins neither the inspection and oil change due dates, nor the vehicle health report. The plugin therefore offers a follow-up to be entered by hand, on the device page: inspection, oil change and roadworthiness test.
+
+For the inspection and the oil change, enter the due value (mileage and date); for the roadworthiness test, the date only. You can also copy what the MyŠkoda app shows (Inspect, Service) in the form “in so many km” and “in so many days”: the plugin converts it when saving. It then counts down the kilometres and days left (commands “Inspection: kilometres left”, etc., usable in scenarios), shows them on the tile, and warns in the message centre when a due date goes below the warning threshold (1,000 km or 30 days by default, adjustable). After a service, enter the new due value.
+
+## Data disabled on the vehicle
+
+Škoda may answer that part of the data (locking and openings, fuel, mileage, position…) exists on the vehicle but is disabled. The plugin shows it on the tile, in the “Services disabled” command and in the message centre. This is not set in Jeedom: check in the MyŠkoda app that the vehicle's online services are active (valid licence), that consent to data sharing is given, and that the vehicle is not in privacy mode.
+
+## Reporting a problem
+
+First attach the **diagnostic report**: in the plugin configuration, section “Diagnostics and support”, the “Generate a diagnostic report” button shows a text that you copy or download with the two buttons below it. It gives the version of the plugin, Jeedom, PHP and Debian, the settings, and for each vehicle its model, its options, its commands, the time of the last readings, the remaining quota, the main values, the number of trips and charging sessions over the last seven days, then the messages and the last error lines of the plugin. It contains no key, S-PIN code, VIN, number plate, device name, place, address or position: vehicles are numbered in it, and it can be sent as is. The report is written in French.
+
+If you are asked afterwards, also attach the `myskoda` log at Debug level (plugin configuration, “Logs and monitoring” frame, then Analysis → Logs menu). This log contains Škoda's answers, from which the plugin removes the VIN, the number plate, the address and the parking coordinates before writing them. The API key and the S-PIN code never appear in it. The name you gave the device does appear in it.
+
+## Data temporarily unavailable at Škoda
+
+Škoda sometimes answers without any vehicle data, every section being “unavailable”: this is seen in particular while a vehicle is driving. The plugin then keeps the last values received and says so on the tile and at the top of the logbook, with the time since which this has lasted (command “Škoda data unavailable since”). Nothing needs to be done: a trip or charging session in progress ends at the right time as soon as Škoda answers again, because the car dates its own data.
+
+## Limits
+
+- Škoda allows 20 requests per hour and per vehicle, readings and commands included. The plugin reads every 10 minutes while parked and during a charging session (6 requests per hour), and every 5 minutes while driving (12 per hour). **A command sent to the vehicle costs two requests**: the command, then the re-reading that follows one minute later to see its effect. The “Refresh” command costs one. Setting the air conditioning target temperature costs none as long as the air conditioning is off. While parked or charging, there is therefore enough left to send six or seven commands per hour; beyond that, Škoda refuses until the next hour. In a scenario, avoid calling “Refresh” or a command in a loop: values already update by themselves. The plugin always keeps the last three requests of the hour for commands: when only three are left, automatic readings stop until the quota is renewed, and the tile no longer changes during that time; “Requests left” and “Key expiry” let you follow the quota and the validity of the key.
+- The API does not wake the vehicle: values are those of its last transmission (command “Last data sent by the vehicle”).
+- The key expires. The plugin does not warn in advance: it reports it in the Jeedom message centre when Škoda rejects the key, then waits one hour before trying again, or resumes as soon as a new key is saved. The end date is in the “Key expiry” command (hidden by default), which a scenario can monitor.
+- If Škoda adds a command to its API and a vehicle announces it, the plugin reports it once in the message centre.
+- Not offered by the API: remote locking, honk and flash, door-by-door status.

@@ -2,7 +2,7 @@
 
 >**IMPORTANT**
 >
->Beta version. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on two electric vehicles, two Elroq (battery, range, charging locations; on one of them, charging detection and charging and air conditioning commands). Not yet tried on a real vehicle: a hybrid, auxiliary heating, the “Card” layout of an electric car. Feedback is welcome.
+>Beta version. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on two electric vehicles, two Elroq (battery, range, charging locations; on one of them, charging detection and charging and air conditioning commands). Not yet tried on a real vehicle: a hybrid, auxiliary heating. Feedback is welcome.
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
@@ -11,6 +11,7 @@ The detailed history of the earlier beta versions is in the [French changelog](.
 - The plugin is available in English. In a Jeedom set to English (Settings → System → Configuration → General → Language), the tile, the card, the logbook, the vehicles page and the plugin configuration are displayed in English, with the words of the MyŠkoda app in English where they exist (“Inspection”, “Oil change”, “Boot”, “Bonnet”, “Smart home”…). Dates follow the language, numbers use a decimal point, and the Excel export then separates its columns with commas. In a Jeedom set to French, nothing changes.
 - Documentation: it is now available in English, and the “Documentation” and “Changelog” buttons open it in the Jeedom language. Its “Commands” section now gives the full list of commands, one by one, with their exact name, their type and their value (possible charging and air conditioning states, limits of the settings), grouped by topic. Useful for writing a scenario.
 - This version brings no new feature: it adds English and completes the documentation.
+- The “Card” layout of the tile and the logbook trips are now confirmed on an electric car (an Elroq).
 - What stays in French for now: the diagnostic report, the plugin log lines and the screenshots of the documentation.
 - Good to know: a command name is given once and for all, in the Jeedom language at the time the vehicle is added; changing the language afterwards does not rename existing commands.
 

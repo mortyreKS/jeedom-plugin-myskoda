@@ -2,22 +2,32 @@
 
 Suivi et pilotage des véhicules Škoda dans Jeedom par l'[API publique officielle MyŠkoda](https://public.api.connect.skoda-auto.cz/docs).
 
-**Version beta.** Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et le journal de bord d'une électrique sur plusieurs jours.
+**Version beta.** Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, la présentation « Carte » d'une électrique. Les retours sont les bienvenus, dans les [tickets](https://github.com/mortyreKS/jeedom-plugin-myskoda/issues) du dépôt ou sur le [forum Jeedom](https://community.jeedom.com/t/beta-privee-myskoda-nouveau-plugin-skoda-sur-lapi-officielle-je-cherche-des-testeurs/151174).
 
 ## Prérequis
 
-Jeedom 4.4 ou plus récent, sous Debian 12 ou Debian 13. Ni démon ni dépendance : le plugin n'utilise que ce que Jeedom contient déjà.
+Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie : la logique est de passer à Debian 12 au minimum ; pour autant, le plugin y fonctionne aujourd'hui (version 0.81 constatée sous Debian 11.11 avec PHP 7.4.33). Ni démon ni dépendance : le plugin n'utilise que ce que Jeedom contient déjà.
 
 ## Installation
 
-Depuis Jeedom, par la source « Fichier » (zip) : Plugins, Gestion des plugins, ajout depuis une autre source, identifiant `myskoda`. La mise en service (clé à créer dans l'application MyŠkoda, ajout du véhicule) est décrite dans la documentation.
+Depuis Jeedom, par la source « Github » : Plugins, Gestion des plugins, ajout depuis une autre source, puis :
+
+| Champ | Valeur |
+|---|---|
+| Type de source | Github |
+| ID logique du plugin | `myskoda` |
+| Utilisateur ou organisation du dépôt | `mortyreKS` |
+| Nom du dépôt | `jeedom-plugin-myskoda` |
+| Branche | `beta` |
+
+Si « Github » n'apparaît pas dans les types de source, activez-le d'abord dans Réglages, Système, Configuration, onglet « Mises à jour/Market ». La mise en service (clé à créer dans l'application MyŠkoda, ajout du véhicule) est décrite dans la documentation.
 
 ## Documentation
 
 - [Documentation](docs/fr_FR/index.md)
 - [Journal des versions de la beta](docs/fr_FR/changelog_beta.md)
 
-Les pages du dossier `aide/` sont ces mêmes documents convertis en HTML. Elles servent aux boutons « Documentation » et « Changelog » de Jeedom, qui interdit l'accès web aux dossiers `docs/` des plugins ; elles seront remplacées par des pages en ligne quand le plugin aura un dépôt public.
+Les pages du dossier `aide/` sont ces mêmes documents convertis en HTML. Elles servent aux boutons « Documentation » et « Changelog » de Jeedom, qui interdit l'accès web aux dossiers `docs/` des plugins ; elles sont donc toujours celles de la version installée.
 
 ## Composants tiers
 

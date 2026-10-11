@@ -2,7 +2,7 @@
 
 >**IMPORTANT**
 >
->Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, la présentation « Carte » d'une électrique (nouveauté de la 0.8, mise au point sur des données d'exemple). Les retours sont les bienvenus.
+>Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur deux véhicules électriques, deux Elroq (batterie, autonomie, points de recharge ; sur l'un des deux, détection de la recharge et commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, la présentation « Carte » d'une électrique (nouveauté de la 0.8, mise au point sur des données d'exemple). Les retours sont les bienvenus.
 
 # 0.82 — 11/10/2026
 

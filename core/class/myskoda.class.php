@@ -657,6 +657,35 @@ class myskoda extends eqLogic {
     return array('profiles' => $profiles, 'current' => $current, 'time' => self::toLocalDate(self::dig($source, 'carCapturedTimestamp')));
   }
 
+  // Unités d'affichage, réglées une fois pour tout le plugin dans sa configuration : « imperial » pour les miles
+  // (Royaume-Uni), sinon le système métrique. Seul l'affichage est converti (tuile, journal de bord, exports) : les
+  // valeurs des commandes restent en kilomètres, pour qu'un scénario ne change pas de sens avec ce réglage.
+  public static function isImperial() {
+    return config::byKey('units', __CLASS__, 'metric') == 'imperial';
+  }
+
+  const KM_TO_MILES = 0.621371;
+
+  // Distance donnée en kilomètres, rendue dans l'unité d'affichage
+  private static function distance($_km) {
+    return self::isImperial() ? (float) $_km * self::KM_TO_MILES : (float) $_km;
+  }
+
+  private static function distanceUnit() {
+    return self::isImperial() ? 'mi' : 'km';
+  }
+
+  private static function speedUnit() {
+    return self::isImperial() ? 'mph' : 'km/h';
+  }
+
+  // Les tuiles sont redessinées quand le réglage change
+  public static function postConfig_units($_value) {
+    foreach (eqLogic::byType(__CLASS__) as $eqLogic) {
+      $eqLogic->refreshWidget();
+    }
+  }
+
   // Nombre entier avec ses milliers, tel qu'on l'écrit dans la langue de Jeedom : « 13 311 », « 13,311 » en anglais,
   // comme le fait le journal de bord
   private static function thousands($_value) {
@@ -2385,7 +2414,7 @@ class myskoda extends eqLogic {
     $html .= '<div class="msc-photo"><div class="msc-cadre' . $render . '"><img src="' . $image . '" alt=""></div><div class="msc-id">'
       . (($text('name') !== null) ? '<div class="msc-modele">' . $text('name') . '</div>' : '')
       . (($text('license_plate') !== null || $carType !== null) ? '<div>' . implode(' · ', array_filter(array($text('license_plate'), $carType))) . '</div>' : '')
-      . (($get('mileage') !== null) ? '<div>' . self::thousands((float) $get('mileage')) . ' km</div>' : '')
+      . (($get('mileage') !== null) ? '<div>' . self::thousands(self::distance($get('mileage'))) . ' ' . self::distanceUnit() . '</div>' : '')
       . '<div class="msc-icones">' . $icons . '</div></div></div>';
 
     // Jauges : batterie (avec un repère à la limite de charge), carburant ; les deux pour un hybride rechargeable
@@ -2397,7 +2426,7 @@ class myskoda extends eqLogic {
       $level = max(0, min(100, (float) $gauge[1]));
       $mark = ($gauge[3] !== null && $gauge[3] > 0 && $gauge[3] < 100) ? '<span style="left:' . (float) $gauge[3] . '%" title="' . __('Limite de charge', __FILE__) . '"></span>' : '';
       $html .= '<div class="msc-jauge"><div class="msc-chiffres"><div class="msc-pct"><i class="' . $gauge[0] . '"></i>' . round($level) . '<small> %</small></div>'
-        . '<div class="msc-km">' . (($gauge[2] !== null) ? round((float) $gauge[2]) . ' km' : '') . '</div></div>'
+        . '<div class="msc-km">' . (($gauge[2] !== null) ? round(self::distance($gauge[2])) . ' ' . self::distanceUnit() : '') . '</div></div>'
         . '<div class="msc-barre"><div style="width:' . $level . '%"></div>' . $mark . '</div></div>';
     }
 
@@ -2416,7 +2445,7 @@ class myskoda extends eqLogic {
           $details[] = self::decimal((string) round((float) $get('charge_power'), 1)) . ' kW' . $type;
         }
         if ($get('charge_rate') !== null) {
-          $details[] = '+' . round((float) $get('charge_rate')) . ' km/h';
+          $details[] = '+' . round(self::distance($get('charge_rate'))) . ' ' . self::speedUnit();
         }
         if ($get('charge_time_left') !== null) {
           $minutes = (int) $get('charge_time_left');
@@ -2502,7 +2531,7 @@ class myskoda extends eqLogic {
     foreach (self::$_services as $key => $label) {
       $parts = array();
       if ($get('service_' . $key . '_km') !== null) {
-        $parts[] = self::serviceText((float) $get('service_' . $key . '_km'), 'km', __('en retard de %s km', __FILE__));
+        $parts[] = self::serviceText(self::distance($get('service_' . $key . '_km')), self::distanceUnit(), self::isImperial() ? __('en retard de %s miles', __FILE__) : __('en retard de %s km', __FILE__));
       }
       if ($get('service_' . $key . '_days') !== null) {
         $parts[] = self::serviceText((float) $get('service_' . $key . '_days'), __('jours', __FILE__), __('en retard de %s jours', __FILE__));
@@ -2617,7 +2646,7 @@ class myskoda extends eqLogic {
       $identity .= '<div>' . implode(' · ', array_filter(array($text('license_plate'), $carType))) . '</div>';
     }
     if ($get('mileage') !== null) {
-      $identity .= '<div>' . __('Compteur', __FILE__) . ' : ' . self::thousands((float) $get('mileage')) . ' km</div>';
+      $identity .= '<div>' . __('Compteur', __FILE__) . ' : ' . self::thousands(self::distance($get('mileage'))) . ' ' . self::distanceUnit() . '</div>';
     }
     if ($get('data_timestamp') !== null) {
       $identity .= '<div>' . __('Remontée', __FILE__) . ' : ' . self::tileDate($get('data_timestamp')) . '</div>';
@@ -2633,11 +2662,11 @@ class myskoda extends eqLogic {
       }
       $level = max(0, min(100, (float) $gauge[1]));
       $battery .= '<div class="ms-battery"><div class="ms-battery-text"><span><i class="' . $gauge[0] . '"></i> ' . round($level) . ' %</span>'
-        . '<span>' . (($gauge[2] !== null) ? round((float) $gauge[2]) . ' km' : '') . '</span></div>'
+        . '<span>' . (($gauge[2] !== null) ? round(self::distance($gauge[2])) . ' ' . self::distanceUnit() : '') . '</span></div>'
         . '<div class="ms-bar"><div style="width:' . $level . '%"></div></div></div>';
     }
     if ($battery == '' && $fuelRange !== null) {
-      $battery = '<div class="ms-battery"><div class="ms-battery-text"><span><i class="fas fa-gas-pump"></i> ' . __('Autonomie', __FILE__) . '</span><span>' . round((float) $fuelRange) . ' km</span></div></div>';
+      $battery = '<div class="ms-battery"><div class="ms-battery-text"><span><i class="fas fa-gas-pump"></i> ' . __('Autonomie', __FILE__) . '</span><span>' . round(self::distance($fuelRange)) . ' ' . self::distanceUnit() . '</span></div></div>';
     }
     $tags['#ms_battery#'] = $battery;
 
@@ -2652,7 +2681,7 @@ class myskoda extends eqLogic {
         $charge .= self::tileRow(__('Puissance', __FILE__), self::decimal((string) round((float) $get('charge_power'), 1)) . ' kW' . $type);
       }
       if ($get('charge_rate') !== null) {
-        $charge .= self::tileRow(__('Gain', __FILE__), round((float) $get('charge_rate')) . ' km/h');
+        $charge .= self::tileRow(__('Gain', __FILE__), round(self::distance($get('charge_rate'))) . ' ' . self::speedUnit());
       }
       if ($get('charge_time_left') !== null) {
         $minutes = (int) $get('charge_time_left');
@@ -2720,7 +2749,7 @@ class myskoda extends eqLogic {
     foreach (self::$_services as $key => $label) {
       $parts = array();
       if ($get('service_' . $key . '_km') !== null) {
-        $parts[] = self::serviceText((float) $get('service_' . $key . '_km'), 'km', __('en retard de %s km', __FILE__));
+        $parts[] = self::serviceText(self::distance($get('service_' . $key . '_km')), self::distanceUnit(), self::isImperial() ? __('en retard de %s miles', __FILE__) : __('en retard de %s km', __FILE__));
       }
       if ($get('service_' . $key . '_days') !== null) {
         $parts[] = self::serviceText((float) $get('service_' . $key . '_days'), __('jours', __FILE__), __('en retard de %s jours', __FILE__));

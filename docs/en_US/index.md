@@ -2,11 +2,13 @@
 
 Monitoring and control of a Škoda vehicle through the official public MyŠkoda API.
 
-> Documentation of the plugin in version 0.83 beta, published on 11/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
+> Documentation of the plugin in version 0.84 beta, published on 11/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
 
 Requirements: Jeedom 4.4 or later (the plugin is tested on Jeedom 4.6), on Debian 12 or Debian 13. Debian 11 has reached end of life (it has not been maintained since 31 August 2026): the sensible path is to move to Debian 12 at least. That said, the plugin works on it today: a tester runs version 0.81 on Debian 11.11 with PHP 7.4.33 (installation, update, vehicle reading, charging locations, diagnostic report). The plugin has no daemon and no dependency.
 
 Languages: French and English. The screens follow the Jeedom language (Settings → System → Configuration → General). The diagnostic report and the plugin log stay in French. Command names are given in the Jeedom language at the time the vehicle is added. The screenshots in this documentation were taken in French.
+
+Units: the “Display units” setting of the plugin configuration offers “Metric (km)” or “Imperial (miles)”. In imperial, the tile, the logbook and its exports show miles, mph, miles per kWh (electric) or miles per UK gallon (combustion). It applies to all vehicles and does not depend on the language. Only the display changes: command values stay in kilometres, temperatures in °C.
 
 ## Getting started
 

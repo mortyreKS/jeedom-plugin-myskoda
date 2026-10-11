@@ -97,6 +97,17 @@ if (!isConnect()) {
       </div>
     </div>
     <div class="form-group">
+      <label class="col-md-4 control-label">{{Unités d'affichage}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{Métrique : kilomètres, km/h, kWh ou litres aux 100 km. Impérial : miles, mph, miles par kWh ou miles par gallon (gallon britannique). Ce réglage vaut pour tous les véhicules et ne change que l'affichage de la tuile, du journal de bord et de ses exports : les valeurs des commandes restent en kilomètres, vos scénarios ne changent pas. Les températures restent en °C}}"></i></sup>
+      </label>
+      <div class="col-md-4">
+        <select class="configKey form-control" data-l1key="units">
+          <option value="metric">{{Métrique (km)}}</option>
+          <option value="imperial">{{Impérial (miles)}}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
       <label class="col-md-4 control-label">{{Prix du kWh (€)}}
         <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. Sert au journal de bord pour estimer le coût des trajets et des recharges. Un prix propre à un lieu (borne publique, par exemple) se saisit dans le journal de bord, onglet « Lieux »}}"></i></sup>
       </label>

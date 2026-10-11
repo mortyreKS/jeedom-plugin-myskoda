@@ -69,6 +69,11 @@ try {
         ajax::success(myskoda::getVersionLabel());
     }
 
+    // Unités d'affichage du journal de bord : « imperial » ou « metric »
+    if (init('action') == 'getUnits') {
+        ajax::success(myskoda::isImperial() ? 'imperial' : 'metric');
+    }
+
     if (init('action') == 'getVehicles') {
         $vehicles = array();
         foreach (eqLogic::byType('myskoda', true) as $eqLogic) {

@@ -6,6 +6,12 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.84 — in preparation
+
+- New “Display units” setting in the plugin configuration: “Metric (km)”, as before, or “Imperial (miles)”. In imperial, the tile, the logbook and its exports show distances in miles, speeds in mph, and consumption the way it is expressed in the United Kingdom: miles per kWh for an electric car, miles per gallon (UK gallon) for a combustion car. The setting applies to all vehicles and does not depend on the language.
+- Only the display changes: command values stay in kilometres, so that a scenario does not change meaning with this setting. Temperatures stay in °C, and the radius of favourite places in metres.
+- Tried on the example data of the demonstration vehicle; not yet with a user who drives in miles.
+
 # 0.83 — in preparation
 
 - The plugin is available in English. In a Jeedom set to English (Settings → System → Configuration → General → Language), the tile, the logbook, the vehicles page and the plugin configuration are displayed in English, with the words of the MyŠkoda app in English where they exist (“Inspection”, “Oil change”, “Boot”, “Bonnet”, “Smart home”…). Dates follow the language, numbers use a decimal point, and the Excel export then separates its columns with commas. In a Jeedom set to French, nothing changes.

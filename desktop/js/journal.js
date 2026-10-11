@@ -134,7 +134,44 @@ var myskodaJournal = (function() {
     if (value === null || value === undefined) {
       return EMPTY
     }
+    var shown = convert(value, unit)
+    return (shown[0] === null) ? EMPTY : format(shown[0], shown[1], decimals)
+  }
+
+  // Nombre mis en forme avec son unité, sans conversion
+  function format(value, unit, decimals) {
     return Number(value).toLocaleString(LOCALE, { minimumFractionDigits: decimals || 0, maximumFractionDigits: decimals || 0 }) + (unit ? ' ' + unit : '')
+  }
+
+  // Unités d'affichage, réglées dans la configuration du plugin (action getUnits) : en « impérial », les distances
+  // passent en miles, les vitesses en mph, et les consommations s'inversent comme on les exprime au Royaume-Uni
+  // (miles par kWh, miles par gallon britannique). Le serveur, lui, ne manipule que des kilomètres.
+  var IMPERIAL = false
+  var MILES = 0.621371
+
+  // Rend [valeur, unité] dans l'unité d'affichage ; une consommation nulle n'a pas d'équivalent (valeur null)
+  function convert(value, unit) {
+    if (!IMPERIAL || value === null || value === undefined) {
+      return [value, unit]
+    }
+    if (unit == 'km') {
+      return [value * MILES, 'mi']
+    }
+    if (unit == 'km/h') {
+      return [value * MILES, 'mph']
+    }
+    if (unit == 'kWh/100 km') {
+      return [value > 0 ? 100 * MILES / value : null, 'mi/kWh']
+    }
+    if (unit == 'L/100 km') {
+      return [value > 0 ? 282.481 / value : null, 'mpg']
+    }
+    return [value, unit]
+  }
+
+  // Unité affichée pour une unité métrique donnée
+  function unitOf(unit) {
+    return convert(1, unit)[1]
   }
 
   function signed(value, unit, decimals) {
@@ -1253,7 +1290,22 @@ var myskodaJournal = (function() {
       return '"' + text.replace(/"/g, '""') + '"'
     }
 
-    function exportCsv(name, headers, lines) {
+    // units : unité métrique de chaque colonne (null si la colonne n'en a pas), pour l'écrire dans l'unité d'affichage
+    function exportCsv(name, headers, lines, units) {
+      if (IMPERIAL && units) {
+        headers = headers.map(function(header, index) {
+          return units[index] ? header.replace('(' + units[index] + ')', '(' + unitOf(units[index]) + ')') : header
+        })
+        lines = lines.map(function(line) {
+          return line.map(function(cell, index) {
+            if (!units[index] || typeof cell != 'number') {
+              return cell
+            }
+            var value = convert(cell, units[index])[0]
+            return value === null ? null : Math.round(value * 10) / 10
+          })
+        })
+      }
       var csv = '\uFEFF' + [headers].concat(lines).map(function(line) { return line.map(csvCell).join(DECIMAL == ',' ? ';' : ',') }).join('\r\n')
       var link = el('a')
       link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -1298,7 +1350,7 @@ var myskodaJournal = (function() {
           ['{{Départ}}', '{{Arrivée}}', '{{Lieu de départ}}', '{{Lieu d\'arrivée}}', '{{Durée (min)}}', '{{Distance (km)}}', '{{Vitesse moyenne (km/h)}}', U.level + ' {{au départ (%)}}', U.level + ' {{à l\'arrivée (%)}}', '{{Consommé}} (' + U.energy + ')', '{{Consommation}} (' + U.consumption + ')', '{{Autonomie utilisée (km)}}', '{{Coût estimé (€)}}'],
           rows.map(function(row) {
             return [row.start, row.end, row.from, row.to, row.minutes, row.distance, row.speed, row.levelStart, row.levelEnd, row.energy, row.consumption, row.rangeUsed, row.cost]
-          }))
+          }), [null, null, null, null, null, 'km', 'km/h', null, null, null, U.consumption, 'km', null])
       }))
       content.appendChild(table(
         [['{{Départ}}'], ['{{De}}', 'msj-left msj-wrap'], ['{{À}}', 'msj-left msj-wrap'], ['{{Durée}}'], ['{{Distance}}'], ['{{Vitesse}}'], [U.level], ['{{Consommé}}'], ['{{Consommation}}'], ['{{Autonomie}}'], ['{{Coût estimé}}']],
@@ -1373,7 +1425,7 @@ var myskodaJournal = (function() {
           refillColumns(['{{Début}}', '{{Fin}}', '{{Lieu}}', '{{Durée (min)}}', U.level + ' {{au début (%)}}', U.level + ' {{à la fin (%)}}', '{{Quantité}} (' + U.energy + ')', '{{Puissance moyenne (kW)}}', '{{Puissance maximale (kW)}}', '{{Autonomie gagnée (km)}}', '{{Prix}} (' + U.price + ')', '{{Coût (€)}}', '{{Distance depuis le précédent (km)}}', '{{Consommation depuis le précédent}} (' + U.consumption + ')'], [1, 3, 7, 8]),
           rows.map(function(row) {
             return refillColumns([row.start, row.end, row.place, row.minutes, row.levelStart, row.levelEnd, row.energy, row.power, row.maxPower, row.rangeGained, row.price, row.cost, row.sinceDistance, row.sinceConsumption], [1, 3, 7, 8])
-          }))
+          }), refillColumns([null, null, null, null, null, null, null, null, null, 'km', null, null, 'km', U.consumption], [1, 3, 7, 8]))
       }))
       content.appendChild(table(
         refillColumns([['{{Début}}'], ['{{Lieu}}', 'msj-left msj-wrap'], ['{{Durée}}'], [U.level], ['{{Quantité}}'], ['{{Puissance moyenne}}'], ['{{Autonomie}}'], ['{{Prix}}'], ['{{Coût}}'], ['{{Depuis le précédent}}'], ['{{Consommation}}']], [2, 5]),
@@ -1394,9 +1446,12 @@ var myskodaJournal = (function() {
     // Histogramme : une barre par jour ou par mois de la période
     function barChart(title, keys, values, color, unit, decimals) {
       var NS = 'http://www.w3.org/2000/svg'
+      // Les barres sont tracées dans l'unité d'affichage : une consommation en miles par kWh s'inverse
+      values = values.map(function(value) { return value ? convert(value, unit)[0] : value })
+      unit = unitOf(unit)
       var max = Math.max.apply(null, values.map(function(value) { return value || 0 }))
       var box = el('div', 'msj-chart')
-      box.appendChild(el('div', 'msj-chart-title', title + (max > 0 ? ' — {{maximum}} ' + show(max, unit, decimals) : '')))
+      box.appendChild(el('div', 'msj-chart-title', title + (max > 0 ? ' — {{maximum}} ' + format(max, unit, decimals) : '')))
       var svg = document.createElementNS(NS, 'svg')
       svg.setAttribute('viewBox', '0 0 1000 100')
       svg.setAttribute('preserveAspectRatio', 'none')
@@ -1415,7 +1470,7 @@ var myskodaJournal = (function() {
         bar.setAttribute('height', height)
         bar.setAttribute('fill', color)
         var tip = document.createElementNS(NS, 'title')
-        tip.textContent = bucketLabel(key) + ' : ' + show(value, unit, decimals)
+        tip.textContent = bucketLabel(key) + ' : ' + format(value, unit, decimals)
         bar.appendChild(tip)
         svg.appendChild(bar)
       })
@@ -1463,7 +1518,7 @@ var myskodaJournal = (function() {
       grid.appendChild(kpi(String(trips.length), '{{trajet(s)}}', duration(minutes) + ' {{au volant}}'))
       grid.appendChild(kpi(minutes > 0 ? show(distance / (minutes / 60), 'km/h') : EMPTY, '{{vitesse moyenne}}', longest ? '{{plus long trajet}} : ' + show(longest.distance, 'km') + ' (' + dayLabel(longest.start) + ')' : ''))
       grid.appendChild(kpi(show(consumptionOf(trips), U.consumption, 1), '{{consommation moyenne}}', energyUsed === null ? '' : show(energyUsed, U.energy, 1) + ' {{consommés}}'))
-      grid.appendChild(kpi(show(tripCost, '€', 2), '{{coût estimé des trajets}}', (tripCost !== null && distance > 0) ? show(tripCost / distance * 100, '€', 2) + ' {{aux 100 km}}' : ''))
+      grid.appendChild(kpi(show(tripCost, '€', 2), '{{coût estimé des trajets}}', (tripCost !== null && distance > 0) ? show(tripCost / distance * 100 / (IMPERIAL ? MILES : 1), '€', 2) + ' ' + (IMPERIAL ? '{{aux 100 miles}}' : '{{aux 100 km}}') : ''))
       grid.appendChild(kpi(String(charges.length), U.refills, U.fuel ? '' : duration(sum(charges, 'minutes')) + ' {{en charge}}'))
       grid.appendChild(kpi(show(energyCharged, U.energy, 1), U.refilled, has(charges, 'rangeGained') ? signed(sum(charges, 'rangeGained'), 'km') + ' {{d\'autonomie}}' : ''))
       grid.appendChild(kpi(show(chargeCost, '€', 2), U.refillCost, (chargeCost !== null && energyCharged > 0) ? show(chargeCost / energyCharged, U.price, 2) + ' {{en moyenne}}' : ''))
@@ -1501,7 +1556,7 @@ var myskodaJournal = (function() {
           ['{{Mois}}', '{{Trajets}}', '{{Distance (km)}}', '{{Durée (min)}}', '{{Consommé}} (' + U.energy + ')', '{{Consommation}} (' + U.consumption + ')', '{{Coût estimé des trajets (€)}}', U.refillTab, U.refillChart + ' (' + U.energy + ')', '{{Coût (€)}}'],
           monthly.map(function(m) {
             return [m.key, m.trips, m.distance, m.minutes, m.energy === null ? null : Math.round(m.energy * 10) / 10, m.consumption === null ? null : Math.round(m.consumption * 10) / 10, m.tripCost === null ? null : Math.round(m.tripCost * 100) / 100, m.charges, m.charged === null ? null : Math.round(m.charged * 10) / 10, m.chargeCost === null ? null : Math.round(m.chargeCost * 100) / 100]
-          }))
+          }), [null, null, 'km', null, null, U.consumption, null, null, null, null])
       }))
       content.appendChild(table(
         [['{{Mois}}'], ['{{Trajets}}'], ['{{Distance}}'], ['{{Durée}}'], ['{{Consommé}}'], ['{{Consommation}}'], ['{{Coût estimé}}'], [U.refillTab], ['{{Ajouté}}'], ['{{Coût}}']],
@@ -1669,20 +1724,27 @@ var myskodaJournal = (function() {
     }
     window.addEventListener('resize', onResize)
 
-    request({ action: 'getVehicles' }, function(list) {
-      vehicles = list
-      vehicles.forEach(function(item) {
-        var option = el('option', null, item.name)
-        option.value = item.id
-        vehicle.appendChild(option)
-      })
-      if (vehicles.length == 0) {
-        fail(version == 'mobile'
-          ? '{{Aucun véhicule actif. Un véhicule s\'ajoute depuis la version ordinateur de Jeedom : menu Plugins, Objets connectés, MySkoda, « Ajouter un véhicule ».}}'
-          : '{{Aucun véhicule actif. Ajoutez-en un : menu Plugins, Objets connectés, MySkoda, « Ajouter un véhicule ».}}')
-      }
-      refresh()
-    }, fail)
+    // Les unités d'affichage sont lues avant tout affichage ; en cas d'échec, le journal reste en métrique
+    var start = function() {
+      request({ action: 'getVehicles' }, function(list) {
+        vehicles = list
+        vehicles.forEach(function(item) {
+          var option = el('option', null, item.name)
+          option.value = item.id
+          vehicle.appendChild(option)
+        })
+        if (vehicles.length == 0) {
+          fail(version == 'mobile'
+            ? '{{Aucun véhicule actif. Un véhicule s\'ajoute depuis la version ordinateur de Jeedom : menu Plugins, Objets connectés, MySkoda, « Ajouter un véhicule ».}}'
+            : '{{Aucun véhicule actif. Ajoutez-en un : menu Plugins, Objets connectés, MySkoda, « Ajouter un véhicule ».}}')
+        }
+        refresh()
+      }, fail)
+    }
+    request({ action: 'getUnits' }, function(units) {
+      IMPERIAL = (units == 'imperial')
+      start()
+    }, start)
   }
 
   return { mount: mount }

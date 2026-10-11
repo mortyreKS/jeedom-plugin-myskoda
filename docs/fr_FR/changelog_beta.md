@@ -4,6 +4,12 @@
 >
 >Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur deux véhicules électriques, deux Elroq (batterie, autonomie, points de recharge ; sur l'un des deux, détection de la recharge et commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire. Les retours sont les bienvenus.
 
+# 0.84 — en préparation
+
+- Nouveau réglage « Unités d'affichage » dans la configuration du plugin : « Métrique (km) », comme jusqu'ici, ou « Impérial (miles) ». En impérial, la tuile, le journal de bord et ses exports affichent les distances en miles, les vitesses en mph, et les consommations comme on les exprime au Royaume-Uni : miles par kWh pour une électrique, miles par gallon (gallon britannique) pour une thermique. Le réglage vaut pour tous les véhicules et ne dépend pas de la langue.
+- Seul l'affichage change : les valeurs des commandes restent en kilomètres, pour qu'un scénario ne change pas de sens avec ce réglage. Les températures restent en °C, et le rayon des lieux favoris en mètres.
+- Essayé sur les données d'exemple de la démonstration ; pas encore chez un utilisateur qui roule en miles.
+
 # 0.83 — en préparation
 
 - Le plugin est disponible en anglais. Dans un Jeedom réglé en anglais (Réglages → Système → Configuration → Général → Langue), la tuile, le journal de bord, la page des véhicules et la configuration du plugin s'affichent en anglais, avec les mots de l'application MyŠkoda en anglais quand ils existent (« Inspection », « Oil change », « Boot », « Bonnet », « Smart home »…). Les dates suivent la langue, les nombres s'écrivent avec un point décimal, et l'export pour Excel sépare alors ses colonnes par des virgules. Dans un Jeedom en français, rien ne change.

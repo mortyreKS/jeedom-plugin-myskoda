@@ -4,6 +4,10 @@ Suivi et pilotage des véhicules Škoda dans Jeedom par l'[API publique officiel
 
 **Version beta.** Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur deux véhicules électriques, deux Elroq (batterie, autonomie, points de recharge ; sur l'un des deux, détection de la recharge et commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, la présentation « Carte » d'une électrique. Les retours sont les bienvenus, dans les [tickets](https://github.com/mortyreKS/jeedom-plugin-myskoda/issues) du dépôt ou sur le [forum Jeedom](https://community.jeedom.com/t/beta-privee-myskoda-nouveau-plugin-skoda-sur-lapi-officielle-je-cherche-des-testeurs/151174).
 
+## Langues
+
+Français et anglais : l'écran suit la langue de Jeedom. La documentation est en français.
+
 ## Prérequis
 
 Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie : la logique est de passer à Debian 12 au minimum ; pour autant, le plugin y fonctionne aujourd'hui (version 0.81 constatée sous Debian 11.11 avec PHP 7.4.33). Ni démon ni dépendance : le plugin n'utilise que ce que Jeedom contient déjà.

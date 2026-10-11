@@ -125,11 +125,16 @@ var myskodaJournal = (function() {
     return node
   }
 
+  // Langue des dates et des nombres : le libellé « fr-FR » se traduit comme les autres (« en-GB » en anglais), ce qui
+  // donne les noms des jours et des mois et le séparateur décimal de la langue de Jeedom
+  var LOCALE = '{{fr-FR}}'
+  var DECIMAL = (1.5).toLocaleString(LOCALE).charAt(1) == '.' ? '.' : ','
+
   function show(value, unit, decimals) {
     if (value === null || value === undefined) {
       return EMPTY
     }
-    return Number(value).toLocaleString('fr-FR', { minimumFractionDigits: decimals || 0, maximumFractionDigits: decimals || 0 }) + (unit ? ' ' + unit : '')
+    return Number(value).toLocaleString(LOCALE, { minimumFractionDigits: decimals || 0, maximumFractionDigits: decimals || 0 }) + (unit ? ' ' + unit : '')
   }
 
   function signed(value, unit, decimals) {
@@ -160,7 +165,7 @@ var myskodaJournal = (function() {
   }
 
   function dayLabel(text) {
-    return parse(text).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+    return parse(text).toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
   function since(text) {
@@ -983,7 +988,7 @@ var myskodaJournal = (function() {
         address.title = '{{Adresse affichée pour ce lieu. Vous pouvez la corriger si celle donnée par Škoda est fausse}}'
         var price = el('input', 'msj-small')
         price.type = 'text'
-        price.value = place.price ? String(place.price).replace('.', ',') : ''
+        price.value = place.price ? String(place.price).replace('.', DECIMAL) : ''
         // Case vide : c'est le prix général de la configuration qui s'applique, il est donc montré en filigrane
         price.placeholder = (map.price > 0) ? show(map.price, U.price, 2) : U.price
         price.title = U.fuel ? '{{Facultatif : prix du litre à cet endroit, si vous y faites le plein. Vide : le prix général de la configuration du plugin}}' : '{{Facultatif : prix du kWh à cet endroit, si vous y rechargez. Vide : le prix général de la configuration du plugin}}'
@@ -1232,12 +1237,13 @@ var myskodaJournal = (function() {
     }
 
     // ----- Export vers un tableur (CSV lisible par Excel : point-virgule, virgule décimale, UTF-8 avec marque)
+    // Dans une langue à point décimal, le séparateur de colonnes devient la virgule, comme Excel l'attend alors
     function csvCell(value) {
       if (value === null || value === undefined) {
         return ''
       }
       if (typeof value == 'number') {
-        return String(value).replace('.', ',')
+        return String(value).replace('.', DECIMAL)
       }
       var text = String(value)
       // Un texte commençant par = + - @ serait pris pour une formule
@@ -1248,7 +1254,7 @@ var myskodaJournal = (function() {
     }
 
     function exportCsv(name, headers, lines) {
-      var csv = '\uFEFF' + [headers].concat(lines).map(function(line) { return line.map(csvCell).join(';') }).join('\r\n')
+      var csv = '\uFEFF' + [headers].concat(lines).map(function(line) { return line.map(csvCell).join(DECIMAL == ',' ? ';' : ',') }).join('\r\n')
       var link = el('a')
       link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
       link.download = 'myskoda-' + name + '_' + state.start + '_' + state.end + '.csv'
@@ -1289,7 +1295,7 @@ var myskodaJournal = (function() {
       }
       content.appendChild(headline(total, rows.length == 0 ? null : function() {
         exportCsv('trajets',
-          ['Départ', 'Arrivée', 'Lieu de départ', 'Lieu d\'arrivée', 'Durée (min)', 'Distance (km)', 'Vitesse moyenne (km/h)', U.level + ' au départ (%)', U.level + ' à l\'arrivée (%)', 'Consommé (' + U.energy + ')', 'Consommation (' + U.consumption + ')', 'Autonomie utilisée (km)', 'Coût estimé (€)'],
+          ['{{Départ}}', '{{Arrivée}}', '{{Lieu de départ}}', '{{Lieu d\'arrivée}}', '{{Durée (min)}}', '{{Distance (km)}}', '{{Vitesse moyenne (km/h)}}', U.level + ' {{au départ (%)}}', U.level + ' {{à l\'arrivée (%)}}', '{{Consommé}} (' + U.energy + ')', '{{Consommation}} (' + U.consumption + ')', '{{Autonomie utilisée (km)}}', '{{Coût estimé (€)}}'],
           rows.map(function(row) {
             return [row.start, row.end, row.from, row.to, row.minutes, row.distance, row.speed, row.levelStart, row.levelEnd, row.energy, row.consumption, row.rangeUsed, row.cost]
           }))
@@ -1347,7 +1353,7 @@ var myskodaJournal = (function() {
     }
 
     function monthLabel(key) {
-      return parse(key + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+      return parse(key + '-01').toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })
     }
 
     function renderCharges(result) {
@@ -1364,7 +1370,7 @@ var myskodaJournal = (function() {
       })
       content.appendChild(headline(rows.length == 0 ? U.noRefill : rows.length + ' ' + U.refills, rows.length == 0 ? null : function() {
         exportCsv(U.file,
-          refillColumns(['Début', 'Fin', 'Lieu', 'Durée (min)', U.level + ' au début (%)', U.level + ' à la fin (%)', 'Quantité (' + U.energy + ')', 'Puissance moyenne (kW)', 'Puissance maximale (kW)', 'Autonomie gagnée (km)', 'Prix (' + U.price + ')', 'Coût (€)', 'Distance depuis le précédent (km)', 'Consommation depuis le précédent (' + U.consumption + ')'], [1, 3, 7, 8]),
+          refillColumns(['{{Début}}', '{{Fin}}', '{{Lieu}}', '{{Durée (min)}}', U.level + ' {{au début (%)}}', U.level + ' {{à la fin (%)}}', '{{Quantité}} (' + U.energy + ')', '{{Puissance moyenne (kW)}}', '{{Puissance maximale (kW)}}', '{{Autonomie gagnée (km)}}', '{{Prix}} (' + U.price + ')', '{{Coût (€)}}', '{{Distance depuis le précédent (km)}}', '{{Consommation depuis le précédent}} (' + U.consumption + ')'], [1, 3, 7, 8]),
           rows.map(function(row) {
             return refillColumns([row.start, row.end, row.place, row.minutes, row.levelStart, row.levelEnd, row.energy, row.power, row.maxPower, row.rangeGained, row.price, row.cost, row.sinceDistance, row.sinceConsumption], [1, 3, 7, 8])
           }))
@@ -1425,8 +1431,8 @@ var myskodaJournal = (function() {
 
     function bucketLabel(key) {
       return key.length == 7
-        ? parse(key + '-01').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
-        : parse(key).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+        ? parse(key + '-01').toLocaleDateString(LOCALE, { month: 'short', year: '2-digit' })
+        : parse(key).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' })
     }
 
     function renderStats(result) {
@@ -1492,7 +1498,7 @@ var myskodaJournal = (function() {
       })
       content.appendChild(headline('{{Par mois}}', monthly.length == 0 ? null : function() {
         exportCsv('statistiques',
-          ['Mois', 'Trajets', 'Distance (km)', 'Durée (min)', 'Consommé (' + U.energy + ')', 'Consommation (' + U.consumption + ')', 'Coût estimé des trajets (€)', U.refillTab, U.refillChart + ' (' + U.energy + ')', 'Coût (€)'],
+          ['{{Mois}}', '{{Trajets}}', '{{Distance (km)}}', '{{Durée (min)}}', '{{Consommé}} (' + U.energy + ')', '{{Consommation}} (' + U.consumption + ')', '{{Coût estimé des trajets (€)}}', U.refillTab, U.refillChart + ' (' + U.energy + ')', '{{Coût (€)}}'],
           monthly.map(function(m) {
             return [m.key, m.trips, m.distance, m.minutes, m.energy === null ? null : Math.round(m.energy * 10) / 10, m.consumption === null ? null : Math.round(m.consumption * 10) / 10, m.tripCost === null ? null : Math.round(m.tripCost * 100) / 100, m.charges, m.charged === null ? null : Math.round(m.charged * 10) / 10, m.chargeCost === null ? null : Math.round(m.chargeCost * 100) / 100]
           }))

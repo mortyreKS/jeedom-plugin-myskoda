@@ -657,6 +657,11 @@ class myskoda extends eqLogic {
     return array('profiles' => $profiles, 'current' => $current, 'time' => self::toLocalDate(self::dig($source, 'carCapturedTimestamp')));
   }
 
+  // Nombre décimal tel qu'on l'écrit dans la langue de Jeedom : virgule, sauf en anglais
+  private static function decimal($_value) {
+    return (substr(translate::getLanguage(), 0, 2) == 'en') ? (string) $_value : str_replace('.', ',', (string) $_value);
+  }
+
   private static $_dayLabels = array('MONDAY' => 'lun.', 'TUESDAY' => 'mar.', 'WEDNESDAY' => 'mer.', 'THURSDAY' => 'jeu.', 'FRIDAY' => 'ven.', 'SATURDAY' => 'sam.', 'SUNDAY' => 'dim.');
 
   // Jours d'une heure de départ, en clair : « tous les jours », « lun. à ven. », ou la liste
@@ -1069,7 +1074,7 @@ class myskoda extends eqLogic {
     }
     $items = array();
     foreach ($_modes as $mode) {
-      $items[] = $mode . '|' . (isset(self::$_chargeModeLabels[$mode]) ? self::$_chargeModeLabels[$mode] : $mode);
+      $items[] = $mode . '|' . (isset(self::$_chargeModeLabels[$mode]) ? __(self::$_chargeModeLabels[$mode], __FILE__) : $mode);
     }
     return implode(';', $items);
   }
@@ -2400,7 +2405,7 @@ class myskoda extends eqLogic {
       if ($charging) {
         if ($get('charge_power') !== null) {
           $type = ($get('charge_type') !== null && $get('charge_type') != 'OFF') ? ' ' . $text('charge_type') : '';
-          $details[] = str_replace('.', ',', (string) round((float) $get('charge_power'), 1)) . ' kW' . $type;
+          $details[] = self::decimal((string) round((float) $get('charge_power'), 1)) . ' kW' . $type;
         }
         if ($get('charge_rate') !== null) {
           $details[] = '+' . round((float) $get('charge_rate')) . ' km/h';
@@ -2459,11 +2464,11 @@ class myskoda extends eqLogic {
         $setpoint = is_numeric($this->getConfiguration('climate_setpoint')) ? (float) $this->getConfiguration('climate_setpoint') : (($get('target_temperature') !== null) ? (float) $get('target_temperature') : null);
         $options = ($setpoint === null) ? '<option value="" selected>—</option>' : '';
         for ($degree = 16.0; $degree <= 30.0; $degree += 0.5) {
-          $options .= '<option value="' . $degree . '"' . (($setpoint !== null && abs($setpoint - $degree) < 0.01) ? ' selected' : '') . '>' . str_replace('.', ',', (string) $degree) . ' °C</option>';
+          $options .= '<option value="' . $degree . '"' . (($setpoint !== null && abs($setpoint - $degree) < 0.01) ? ' selected' : '') . '>' . self::decimal((string) $degree) . ' °C</option>';
         }
         $list = '<select class="msc-liste" title="' . __('Consigne de climatisation', __FILE__) . '" data-ms-cmd="' . $action['climate_temp_set']->getId() . '">' . $options . '</select>';
       } elseif ($get('target_temperature') !== null) {
-        $list = '<span class="msc-valeur">' . str_replace('.', ',', (string) round((float) $get('target_temperature'), 1)) . ' °C</span>';
+        $list = '<span class="msc-valeur">' . self::decimal((string) round((float) $get('target_temperature'), 1)) . ' °C</span>';
       }
       $blocks .= '<div class="msc-bloc">' . $button . '<div class="msc-txt"><div class="msc-titre">' . __('Climatisation', __FILE__) . '</div>'
         . '<div class="msc-sous">' . implode(' · ', $details) . '</div></div>' . $list . '</div>';
@@ -2636,7 +2641,7 @@ class myskoda extends eqLogic {
     if ($get('charging') == 1) {
       if ($get('charge_power') !== null) {
         $type = ($get('charge_type') !== null && $get('charge_type') != 'OFF') ? ' ' . $text('charge_type') : '';
-        $charge .= self::tileRow(__('Puissance', __FILE__), str_replace('.', ',', (string) round((float) $get('charge_power'), 1)) . ' kW' . $type);
+        $charge .= self::tileRow(__('Puissance', __FILE__), self::decimal((string) round((float) $get('charge_power'), 1)) . ' kW' . $type);
       }
       if ($get('charge_rate') !== null) {
         $charge .= self::tileRow(__('Gain', __FILE__), round((float) $get('charge_rate')) . ' km/h');
@@ -2680,11 +2685,11 @@ class myskoda extends eqLogic {
       $setpoint = is_numeric($this->getConfiguration('climate_setpoint')) ? (float) $this->getConfiguration('climate_setpoint') : (($get('target_temperature') !== null) ? (float) $get('target_temperature') : null);
       $options = ($setpoint === null) ? '<option value="" selected>—</option>' : '';
       for ($degree = 16.0; $degree <= 30.0; $degree += 0.5) {
-        $options .= '<option value="' . $degree . '"' . (($setpoint !== null && abs($setpoint - $degree) < 0.01) ? ' selected' : '') . '>' . str_replace('.', ',', (string) $degree) . ' °C</option>';
+        $options .= '<option value="' . $degree . '"' . (($setpoint !== null && abs($setpoint - $degree) < 0.01) ? ' selected' : '') . '>' . self::decimal((string) $degree) . ' °C</option>';
       }
       $climate .= self::tileRow(__('Consigne', __FILE__), '<select class="form-control ms-select" data-ms-cmd="' . $action['climate_temp_set']->getId() . '">' . $options . '</select>');
     } elseif ($get('target_temperature') !== null) {
-      $climate .= self::tileRow(__('Consigne', __FILE__), str_replace('.', ',', (string) round((float) $get('target_temperature'), 1)) . ' °C');
+      $climate .= self::tileRow(__('Consigne', __FILE__), self::decimal((string) round((float) $get('target_temperature'), 1)) . ' °C');
     }
     if ($get('climate_on') == 1 && $get('climate_ready_at') !== null) {
       $climate .= self::tileRow(__('Prête à', __FILE__), self::tileDate($get('climate_ready_at')));

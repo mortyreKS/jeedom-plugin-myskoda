@@ -161,19 +161,19 @@ $eqLogics = eqLogic::byType($plugin->getId());
 								</div>
 							</div>
 							<div class="form-group">
-								<label class="col-sm-4 control-label">{{Présentation de la tuile}}
-									<sup><i class="fas fa-question-circle tooltips" title="{{Tuile : la présentation habituelle, dans le cadre des tuiles de Jeedom. Carte : une carte de taille fixe (330 × 500) au fond sombre, pensée pour un design ; elle porte l'essentiel, et chaque commande envoyée à la voiture y demande une confirmation}}"></i></sup>
+								<label class="col-sm-4 control-label">{{Personnalisation de la tuile de l'équipement}}
+									<sup><i class="fas fa-question-circle tooltips" title="{{Standard : la tuile habituelle, dans le cadre des tuiles de Jeedom. Personnalisée : une tuile de taille fixe (330 × 500) au fond de couleur, pensée pour un design ; elle porte l'essentiel, et chaque commande envoyée à la voiture y demande une confirmation}}"></i></sup>
 								</label>
 								<div class="col-sm-6">
 									<select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="tile_style">
-										<option value="">{{Tuile (par défaut)}}</option>
-										<option value="card">{{Carte}}</option>
+										<option value="">{{Standard (par défaut)}}</option>
+										<option value="card">{{Personnalisée}}</option>
 									</select>
 								</div>
 							</div>
 							<div class="form-group">
-								<label class="col-sm-4 control-label">{{Couleur de fond de la carte}}
-									<sup><i class="fas fa-question-circle tooltips" title="{{Pour la présentation « Carte » seulement. Le fond est un dégradé de cette couleur ; sur une couleur claire, les textes passent au sombre}}"></i></sup>
+								<label class="col-sm-4 control-label">{{Couleur de fond de la tuile personnalisée}}
+									<sup><i class="fas fa-question-circle tooltips" title="{{Pour la tuile personnalisée seulement. Le fond est un dégradé de cette couleur ; sur une couleur claire, les textes passent au sombre}}"></i></sup>
 								</label>
 								<div class="col-sm-6">
 									<input type="color" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="card_color" value="<?php echo myskoda::CARD_COLOR; ?>" style="width:70px;padding:2px;">

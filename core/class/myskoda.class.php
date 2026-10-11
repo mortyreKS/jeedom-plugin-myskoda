@@ -657,6 +657,12 @@ class myskoda extends eqLogic {
     return array('profiles' => $profiles, 'current' => $current, 'time' => self::toLocalDate(self::dig($source, 'carCapturedTimestamp')));
   }
 
+  // Nombre entier avec ses milliers, tel qu'on l'écrit dans la langue de Jeedom : « 13 311 », « 13,311 » en anglais,
+  // comme le fait le journal de bord
+  private static function thousands($_value) {
+    return number_format((float) $_value, 0, '.', (substr(translate::getLanguage(), 0, 2) == 'en') ? ',' : ' ');
+  }
+
   // Nombre décimal tel qu'on l'écrit dans la langue de Jeedom : virgule, sauf en anglais
   private static function decimal($_value) {
     return (substr(translate::getLanguage(), 0, 2) == 'en') ? (string) $_value : str_replace('.', ',', (string) $_value);
@@ -859,7 +865,7 @@ class myskoda extends eqLogic {
   }
 
   private static function serviceText($_value, $_unit, $_late) {
-    return ($_value < 0) ? sprintf($_late, number_format(-$_value, 0, ',', ' ')) : number_format($_value, 0, ',', ' ') . ' ' . $_unit;
+    return ($_value < 0) ? sprintf($_late, self::thousands(-$_value)) : self::thousands($_value) . ' ' . $_unit;
   }
 
   // Met à jour les kilomètres et les jours restants avant chaque échéance d'entretien saisie sur l'équipement,
@@ -2379,7 +2385,7 @@ class myskoda extends eqLogic {
     $html .= '<div class="msc-photo"><div class="msc-cadre' . $render . '"><img src="' . $image . '" alt=""></div><div class="msc-id">'
       . (($text('name') !== null) ? '<div class="msc-modele">' . $text('name') . '</div>' : '')
       . (($text('license_plate') !== null || $carType !== null) ? '<div>' . implode(' · ', array_filter(array($text('license_plate'), $carType))) . '</div>' : '')
-      . (($get('mileage') !== null) ? '<div>' . number_format((float) $get('mileage'), 0, ',', ' ') . ' km</div>' : '')
+      . (($get('mileage') !== null) ? '<div>' . self::thousands((float) $get('mileage')) . ' km</div>' : '')
       . '<div class="msc-icones">' . $icons . '</div></div></div>';
 
     // Jauges : batterie (avec un repère à la limite de charge), carburant ; les deux pour un hybride rechargeable
@@ -2611,7 +2617,7 @@ class myskoda extends eqLogic {
       $identity .= '<div>' . implode(' · ', array_filter(array($text('license_plate'), $carType))) . '</div>';
     }
     if ($get('mileage') !== null) {
-      $identity .= '<div>' . __('Compteur', __FILE__) . ' : ' . number_format((float) $get('mileage'), 0, ',', ' ') . ' km</div>';
+      $identity .= '<div>' . __('Compteur', __FILE__) . ' : ' . self::thousands((float) $get('mileage')) . ' km</div>';
     }
     if ($get('data_timestamp') !== null) {
       $identity .= '<div>' . __('Remontée', __FILE__) . ' : ' . self::tileDate($get('data_timestamp')) . '</div>';

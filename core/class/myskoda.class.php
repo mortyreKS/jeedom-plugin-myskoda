@@ -65,10 +65,10 @@ class myskoda extends eqLogic {
     'max_charge_current' => array('Courant de charge', 'string', '', 0, 0),
     'max_charge_current_ampere' => array('Courant de charge maximal', 'numeric', 'A', 0, 0),
     'in_saved_location' => array('Dans un lieu enregistré', 'binary', '', 0, 0),
-    'charge_profile' => array('Profil de charge du lieu', 'string', '', 0, 1),
-    'charge_profile_target' => array('Profil de charge : limite', 'numeric', '%', 0, 0),
-    'charge_profile_min' => array('Profil de charge : charge minimale', 'numeric', '%', 0, 0),
-    'charge_profile_next' => array('Profil de charge : prochaine charge', 'string', '', 0, 0),
+    'charge_profile' => array('Point de recharge actuel', 'string', '', 0, 1),
+    'charge_profile_target' => array('Point de recharge : limite', 'numeric', '%', 0, 0),
+    'charge_profile_min' => array('Point de recharge : charge minimale', 'numeric', '%', 0, 0),
+    'charge_profile_next' => array('Point de recharge : prochaine charge', 'string', '', 0, 0),
     'climate_on' => array('Climatisation active', 'binary', '', 1, 1),
     'climate_state' => array('État de la climatisation', 'string', '', 0, 1),
     'target_temperature' => array('Température de consigne', 'numeric', '°C', 0, 1),
@@ -600,10 +600,13 @@ class myskoda extends eqLogic {
     $this->refreshWidget();
   }
 
-  // Profils de charge d'un électrique ou d'un hybride rechargeable, tels que Škoda les rend, mis en forme pour
+  // Profils de charge (« charging profiles » dans l'API, « Points de recharge » dans l'application MyŠkoda et donc à
+  // l'écran) d'un électrique ou d'un hybride rechargeable, tels que Škoda les rend, mis en forme pour
   // l'affichage. Un profil est un réglage de recharge rattaché à un lieu enregistré dans l'application MyŠkoda :
   // limite de charge, charge minimale (en dessous, la voiture charge tout de suite), plages horaires préférées,
-  // minuteries. Rend null si le véhicule n'en fournit pas ; « current » est le profil du lieu où il est garé, ou null.
+  // heures de départ (« timers » dans l'API ; l'application MyŠkoda les nomme « Heure de départ 1, 2, 3 », indiqué par
+  // un testeur le 2026-10-10 ; les plages y sont les « Heures de charge préférées », capture d'un second testeur le
+  // 2026-10-11). Rend null si le véhicule n'en fournit pas ; « current » est le profil du lieu où il est garé, ou null.
   public static function extractChargingProfiles($_vehicle) {
     $source = self::dig($_vehicle, 'chargingProfiles');
     if (!is_array($source) || !isset($source['profiles']) || !is_array($source['profiles'])) {
@@ -656,7 +659,7 @@ class myskoda extends eqLogic {
 
   private static $_dayLabels = array('MONDAY' => 'lun.', 'TUESDAY' => 'mar.', 'WEDNESDAY' => 'mer.', 'THURSDAY' => 'jeu.', 'FRIDAY' => 'ven.', 'SATURDAY' => 'sam.', 'SUNDAY' => 'dim.');
 
-  // Jours d'une minuterie, en clair : « tous les jours », « lun. à ven. », ou la liste
+  // Jours d'une heure de départ, en clair : « tous les jours », « lun. à ven. », ou la liste
   private static function dayList($_days) {
     $order = array_keys(self::$_dayLabels);
     $ranks = array();
@@ -723,7 +726,7 @@ class myskoda extends eqLogic {
     'AIR_CONDITIONING' => 'climatisation',
     'AUXILIARY_HEATING' => 'chauffage auxiliaire',
     'ACTIVE_VENTILATION' => 'ventilation',
-    'CHARGING_PROFILES' => 'profils de charge',
+    'CHARGING_PROFILES' => 'points de recharge',
     'CHARGING' => 'charge',
   );
 
@@ -2176,7 +2179,7 @@ class myskoda extends eqLogic {
   }
 
   // Profils de charge sur la tuile, en lecture seule : le profil du lieu où le véhicule est garé, puis la liste de tous
-  // les profils, repliée. Affichés tant que la commande « Profil de charge du lieu » est visible.
+  // les profils, repliée. Affichés tant que la commande « Point de recharge actuel » est visible.
   private function tileChargingProfiles() {
     $cmd = $this->getCmd('info', 'charge_profile');
     $profiles = $this->getCache('chargingProfiles', array());
@@ -2205,7 +2208,7 @@ class myskoda extends eqLogic {
     foreach ($profiles as $profile) {
       $name = htmlspecialchars((string) $profile['name']);
       if (!empty($profile['current'])) {
-        $html .= self::tileRow(__('Profil du lieu', __FILE__), $name);
+        $html .= self::tileRow(__('Point actuel', __FILE__), $name);
         if (!empty($profile['next'])) {
           $html .= self::tileRow(__('Prochaine charge', __FILE__), htmlspecialchars((string) $profile['next']));
         }
@@ -2214,13 +2217,13 @@ class myskoda extends eqLogic {
       $timers = (isset($profile['timers']) && count($profile['timers']) > 0) ? $join($profile['timers']) : __('aucune', __FILE__);
       $list .= '<div class="ms-profile"><div class="ms-profile-name">' . (!empty($profile['current']) ? '<i class="fas fa-map-marker-alt ms-ok" title="' . __('Le véhicule est garé dans ce lieu', __FILE__) . '"></i> ' : '') . $name . '</div>'
         . '<div>' . $describe($profile) . '</div>'
-        . '<div>' . __('Plages de charge', __FILE__) . ' : ' . $times . '</div>'
-        . '<div>' . __('Minuteries', __FILE__) . ' : ' . $timers . '</div></div>';
+        . '<div>' . __('Heures de charge préférées', __FILE__) . ' : ' . $times . '</div>'
+        . '<div>' . __('Heures de départ', __FILE__) . ' : ' . $timers . '</div></div>';
     }
     // Bloc à part, avec son titre comme « Entretien » : sur une tuile étroite il vient sous « Climatisation », et sans
     // titre ses lignes sembleraient en faire partie
-    return '<div class="ms-block ms-profile-zone"><div class="ms-title"><i class="fas fa-calendar-alt"></i>' . __('Profils de charge', __FILE__) . '</div>' . $html
-      . '<details class="ms-profiles"><summary title="' . __('Cliquer pour déplier ou replier', __FILE__) . '"><i class="fas fa-chevron-right"></i>' . __('Voir tous les profils', __FILE__) . ' (' . count($profiles) . ')</summary>' . $list . '</details></div>';
+    return '<div class="ms-block ms-profile-zone"><div class="ms-title"><i class="fas fa-calendar-alt"></i>' . __('Points de recharge', __FILE__) . '</div>' . $html
+      . '<details class="ms-profiles"><summary title="' . __('Cliquer pour déplier ou replier', __FILE__) . '"><i class="fas fa-chevron-right"></i>' . __('Voir tous les points', __FILE__) . ' (' . count($profiles) . ')</summary>' . $list . '</details></div>';
   }
 
   // Largeur de la présentation « carte », en pixels : fixe, pour s'aligner avec d'autres cartes sur un design.

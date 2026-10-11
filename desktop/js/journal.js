@@ -1192,9 +1192,12 @@ var myskodaJournal = (function() {
       lines.forEach(function(line) {
         var tr = el('tr', line.group ? 'msj-group' : null)
         line.cells.forEach(function(cell, index) {
-          var td = el('td', headers[index][1] || null, cell)
+          // Une cellule peut porter son propre intitulé ({ text, label }) quand elle ne contient pas ce qu'annonce sa
+          // colonne (le nombre de recharges d'une ligne de total, rangé sous « Batterie »)
+          var own = (cell !== null && typeof cell == 'object')
+          var td = el('td', headers[index][1] || null, own ? cell.text : cell)
           // Intitulé de la colonne, affiché devant la valeur quand le tableau est présenté en fiches
-          td.setAttribute('data-label', headers[index][0])
+          td.setAttribute('data-label', own ? cell.label : headers[index][0])
           tr.appendChild(td)
         })
         node.appendChild(tr)
@@ -1320,7 +1323,7 @@ var myskodaJournal = (function() {
       var cost = has(rows, 'cost') ? sum(rows, 'cost') : null
       return refillColumns([
         label, place, duration(minutes),
-        isGroup ? rows.length + ' ' + U.refills : battery(rows[0]),
+        isGroup ? { text: rows.length + ' ' + U.refills, label: '{{Nombre}}' } : battery(rows[0]),
         show(energy, U.energy, 1),
         (energy !== null && minutes > 0) ? show(energy / (minutes / 60), 'kW', 1) : EMPTY,
         has(rows, 'rangeGained') ? signed(sum(rows, 'rangeGained'), 'km') : EMPTY,

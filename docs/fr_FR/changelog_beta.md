@@ -2,7 +2,15 @@
 
 >**IMPORTANT**
 >
->Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, l'affichage des profils de charge et la présentation « Carte » d'une électrique (nouveautés de la 0.8, mises au point sur des données d'exemple). Les retours sont les bienvenus.
+>Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur un véhicule électrique (batterie, autonomie, détection de la recharge, commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, la présentation « Carte » d'une électrique (nouveauté de la 0.8, mise au point sur des données d'exemple). Les retours sont les bienvenus.
+
+# 0.82 — 11/10/2026
+
+- Les « profils de charge » s'appellent maintenant « Points de recharge », comme dans l'application MyŠkoda : titre du bloc sur la tuile, ligne « Point actuel », bandeau « Voir tous les points ». Dans la liste, « Minuteries » devient « Heures de départ » et « Plages de charge » devient « Heures de charge préférées ». Merci aux deux testeurs qui l'ont signalé.
+- Les quatre commandes d'information correspondantes se nomment « Point de recharge actuel », « Point de recharge : limite », « Point de recharge : charge minimale » et « Point de recharge : prochaine charge » sur un véhicule ajouté à partir de cette version. Sur un véhicule déjà en place, elles gardent leur ancien nom (« Profil de charge… ») : rien ne change dans vos scénarios, et vous pouvez les renommer vous-même.
+- Rapport de diagnostic : la ligne « profilsDeCharge » devient « pointsDeRecharge ».
+- Journal de bord sur un écran étroit, onglet Recharges : dans les fiches « Total » et de chaque mois, le nombre de recharges était précédé du mot « Batterie ». Il est maintenant précédé de « Nombre ».
+- L'affichage des points de recharge est confirmé sur un Elroq, et la version 0.81 tourne sous Debian 11.11 avec PHP 7.4.33. Debian 11 est en fin de vie et la logique reste de passer à Debian 12 au minimum, mais le plugin y fonctionne aujourd'hui.
 
 # 0.81 — 10/10/2026
 

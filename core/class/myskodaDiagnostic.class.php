@@ -131,7 +131,7 @@ class myskodaDiagnostic {
       foreach ($profiles as $profile) {
         $here += empty($profile['current']) ? 0 : 1;
       }
-      $lines[] = self::line('profilsDeCharge', count($profiles) . ', véhicule dans un lieu enregistré : ' . self::yesNo($here > 0));
+      $lines[] = self::line('pointsDeRecharge', count($profiles) . ', véhicule dans un lieu enregistré : ' . self::yesNo($here > 0));
     }
 
     $places = $_eqLogic->getPlaces();
@@ -240,7 +240,7 @@ class myskodaDiagnostic {
       // Un profil de charge porte le nom que l'utilisateur lui a donné, souvent celui d'un lieu
       $profiles = $eqLogic->getCache('chargingProfiles', array());
       foreach (is_array($profiles) ? $profiles : array() as $profile) {
-        $swap(isset($profile['name']) ? $profile['name'] : '', '[profil]');
+        $swap(isset($profile['name']) ? $profile['name'] : '', '[point de recharge]');
       }
       foreach ($eqLogic->getPlaces() as $place) {
         foreach (array('name', 'address') as $key) {

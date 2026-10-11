@@ -4,7 +4,7 @@
 >
 >Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur deux véhicules électriques, deux Elroq (batterie, autonomie, points de recharge ; sur l'un des deux, détection de la recharge et commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, la présentation « Carte » d'une électrique (nouveauté de la 0.8, mise au point sur des données d'exemple). Les retours sont les bienvenus.
 
-# 0.9 — en préparation
+# 0.83 — en préparation
 
 - Le plugin est disponible en anglais. Dans un Jeedom réglé en anglais (Réglages → Système → Configuration → Général → Langue), la tuile, la carte, le journal de bord, la page des véhicules et la configuration du plugin s'affichent en anglais, avec les mots de l'application MyŠkoda en anglais quand ils existent (« Inspection », « Oil change », « Boot », « Bonnet », « Smart home »…). Les dates suivent la langue, les nombres s'écrivent avec un point décimal, et l'export pour Excel sépare alors ses colonnes par des virgules. Dans un Jeedom en français, rien ne change.
 - Ce qui reste en français pour l'instant : la documentation et le journal des versions, le rapport de diagnostic et les lignes du log du plugin.

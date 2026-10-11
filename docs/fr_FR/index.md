@@ -33,13 +33,110 @@ Les commandes sont créées à la première lecture, faite dès l'ajout du véhi
 > **À LIRE : le journal de bord démarre vide.**
 > **Škoda ne fournit aucun historique aux plugins. Les trajets, les recharges, les pleins et les statistiques sont reconstitués par le plugin à partir de ce qu'il relève lui-même, à compter de son installation. Juste après l'installation, ces onglets sont donc vides : ils se remplissent au fil des trajets. L'historique affiché par l'application MyŠkoda n'est pas repris.**
 
-## Informations
-
-Batterie, autonomie, état et puissance de charge, temps restant, câble branché et verrouillé, limite et mode de charge, climatisation et température de consigne, verrouillage, portes, vitres, coffre, capot, feux, kilométrage, déplacement, position et adresse de stationnement ; carburant et autonomie pour les véhicules thermiques et hybrides.
-
 ## Commandes
 
-Rafraîchir, démarrer et arrêter la charge, régler la limite de charge, choisir le mode de charge, démarrer la climatisation (avec ou sans température) et l'arrêter, régler la consigne de climatisation, démarrer et arrêter la ventilation, démarrer et arrêter le chauffage auxiliaire.
+Le plugin crée les commandes à la première lecture, d'après ce que le véhicule fournit : une électrique n'a pas les commandes de carburant, une thermique n'a pas celles de la charge, et une commande d'action n'existe que si Škoda l'annonce pour ce véhicule. Les listes ci-dessous donnent le nom de chaque commande tel qu'il est créé dans un Jeedom en français, son type, et ce qu'elle vaut. Une commande binaire vaut 1 pour oui et 0 pour non. Les dates s'écrivent `AAAA-MM-JJ HH:MM:SS`, à l'heure de Jeedom. Quand un état est donné « tel que Škoda le transmet », la valeur est un mot en majuscules et en anglais ; la tuile, elle, l'affiche traduit.
+
+### Véhicule
+
+- **Nom** (info/string) : nom donné au véhicule dans l'application MyŠkoda.
+- **Immatriculation** (info/string) : plaque d'immatriculation.
+- **Motorisation** (info/string) : `ELECTRIC`, `GASOLINE`, `DIESEL`, `HYBRID`, `CNG` ou `LPG`.
+- **Image** (info/string) : adresse de l'image du véhicule fournie par Škoda.
+- **Kilométrage** (info/numeric, km, historisée) : kilométrage au compteur.
+- **Dernière remontée du véhicule** (info/string) : date du relevé le plus récent envoyé par la voiture, toutes données confondues.
+
+### Batterie et charge
+
+- **Batterie** (info/numeric, %, historisée) : niveau de la batterie.
+- **Autonomie électrique** (info/numeric, km, historisée) : autonomie restante sur la batterie.
+- **En charge** (info/binary, historisée) : 1 quand la voiture charge.
+- **État de la charge** (info/string) : tel que Škoda le transmet : `CONNECT_CABLE` (câble débranché), `READY_FOR_CHARGING` (prêt à charger), `CHARGING` (en charge), `CONSERVING` (maintien de la charge), `DISCHARGING` (décharge), `CHARGING_INTERRUPTED` (charge interrompue).
+- **Puissance de charge** (info/numeric, kW, historisée) : puissance de la charge en cours.
+- **Vitesse de charge** (info/numeric, km/h) : autonomie gagnée par heure de charge.
+- **Temps de charge restant** (info/numeric, min) : minutes avant la fin de la charge.
+- **Fin de charge prévue** (info/string) : date prévue de la fin de la charge.
+- **Type de charge** (info/string) : type de la charge en cours, tel que Škoda le transmet.
+- **Câble branché** (info/binary, historisée) : 1 quand le câble est branché.
+- **Câble verrouillé** (info/binary) : 1 quand le câble est verrouillé sur la voiture.
+- **Limite de charge** (info/numeric, %) : niveau auquel la charge s'arrête.
+- **Mode de charge** (info/string) : tel que Škoda le transmet, par exemple `MANUAL`.
+- **Soin de la batterie** (info/binary) : 1 quand le mode de préservation de la batterie est activé.
+- **Courant de charge** (info/string) : réglage du courant de charge, tel que Škoda le transmet.
+- **Courant de charge maximal** (info/numeric, A) : courant maximal en ampères.
+- **Démarrer la charge** (action/other) : démarre la charge.
+- **Arrêter la charge** (action/other) : arrête la charge.
+- **Régler la limite de charge** (action/slider) : de 50 à 100 %, par pas de 10.
+- **Choisir le mode de charge** (action/select) : parmi les modes que le véhicule propose.
+
+### Points de recharge
+
+Les quatre commandes « Point de recharge… » existent si des points de recharge sont définis dans l'application MyŠkoda. Sur un véhicule ajouté avant la version 0.82, elles portent leur ancien nom (« Profil de charge… »).
+
+- **Dans un lieu enregistré** (info/binary) : 1 quand la voiture est garée dans un lieu enregistré dans l'application.
+- **Point de recharge actuel** (info/string) : nom du point de recharge où la voiture est garée ; vide ailleurs.
+- **Point de recharge : limite** (info/numeric, %) : limite de charge de ce point.
+- **Point de recharge : charge minimale** (info/numeric, %) : niveau en dessous duquel la voiture charge tout de suite.
+- **Point de recharge : prochaine charge** (info/string) : heure de la prochaine charge, quand Škoda la donne.
+
+### Climatisation, chauffage et ventilation
+
+- **Climatisation active** (info/binary, historisée) : 1 quand la climatisation chauffe, refroidit ou ventile.
+- **État de la climatisation** (info/string) : tel que Škoda le transmet : `OFF`, `COOLING`, `HEATING`, `HEATING_AUXILIARY`, `VENTILATION`, `COMPLETED`.
+- **Température de consigne** (info/numeric, °C) : température demandée.
+- **Température atteinte prévue** (info/string) : date à laquelle la consigne devrait être atteinte.
+- **Climatisation sans branchement autorisée** (info/binary) : réglage de la voiture, quand elle le communique (voir plus bas).
+- **Dégivrage avant**, **Dégivrage arrière** (info/binary) : 1 quand le dégivrage est en marche.
+- **Démarrer la climatisation** (action/other) : démarre la climatisation à la consigne en cours.
+- **Démarrer la climatisation à** (action/slider) : la démarre à la température choisie, de 16 à 30 °C par pas de 0,5.
+- **Régler la consigne de climatisation** (action/slider) : change la consigne, de 16 à 30 °C par pas de 0,5.
+- **Arrêter la climatisation** (action/other) : arrête la climatisation.
+- **État du chauffage auxiliaire** (info/string) : tel que Škoda le transmet.
+- **Chauffage auxiliaire actif** (info/binary) : 1 quand le chauffage auxiliaire fonctionne.
+- **Démarrer le chauffage auxiliaire**, **Arrêter le chauffage auxiliaire** (action/other) : le démarrage demande le code S-PIN (voir plus bas).
+- **État de la ventilation** (info/string) : tel que Škoda le transmet.
+- **Démarrer la ventilation**, **Arrêter la ventilation** (action/other).
+
+### Verrouillage et ouvrants
+
+- **Verrouillé** (info/binary, historisée) : 1 quand la voiture est verrouillée.
+- **Portes fermées**, **Vitres fermées**, **Coffre fermé**, **Capot fermé**, **Toit ouvrant fermé** (info/binary) : 1 quand tout est fermé.
+- **Feux allumés** (info/binary) : 1 quand des feux sont allumés.
+- **Relevé du verrouillage et des ouvrants** (info/string) : date du dernier état envoyé par la voiture.
+
+### Position
+
+- **En déplacement** (info/binary, historisée) : 1 quand la voiture roule, 0 quand elle est garée.
+- **Latitude**, **Longitude** (info/numeric, historisées) : position de stationnement.
+- **Position** (info/string) : latitude et longitude séparées par une virgule.
+- **Adresse de stationnement** (info/string) : adresse donnée par Škoda.
+- **Lieu** (info/string) : nom du lieu si vous lui en avez donné un dans l'onglet « Lieux », sinon son adresse.
+
+### Carburant
+
+- **Carburant** (info/numeric, %, historisée) : niveau du réservoir.
+- **Autonomie carburant** (info/numeric, km, historisée) : autonomie restante sur le carburant.
+- **Autonomie totale** (info/numeric, km, historisée) : autonomie totale, carburant et batterie pour un hybride.
+- **Autonomie AdBlue** (info/numeric, km) : autonomie restante en AdBlue.
+
+### Entretien
+
+Ces commandes existent quand vous avez saisi les échéances sur la page du véhicule (voir « Entretien »).
+
+- **Révision : kilomètres restants**, **Révision : jours restants** (info/numeric).
+- **Vidange : kilomètres restants**, **Vidange : jours restants** (info/numeric).
+- **Contrôle technique : jours restants** (info/numeric).
+- **Entretien à prévoir** (info/string) : vide tant qu'aucune échéance n'approche ; sinon le nom de chaque entretien à prévoir, suivi de ce qu'il reste.
+
+### Suivi du plugin
+
+- **Rafraîchir** (action/other) : relit le véhicule tout de suite (une requête).
+- **Requêtes restantes** (info/numeric) : requêtes encore permises par Škoda pour l'heure en cours.
+- **Expiration de la clé** (info/string) : date de fin de validité de la clé API.
+- **Services désactivés** (info/string) : vide en temps normal ; sinon la liste des données que Škoda déclare désactivées sur le véhicule.
+- **Données Škoda indisponibles depuis** (info/string) : vide en temps normal ; sinon la date depuis laquelle Škoda ne répond plus.
+
+### Utiliser les commandes
 
 Une commande est transmise au véhicule ; son effet se lit à la relecture suivante, une minute plus tard. Ce délai se règle dans la configuration du plugin (« Relecture après une commande », de 20 secondes à 2 minutes) : plus court, l'état suit plus vite dans un scénario ; trop court, la voiture n'a pas encore répondu et l'état ne changera qu'à la lecture d'après.
 

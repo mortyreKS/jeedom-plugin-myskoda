@@ -473,7 +473,7 @@
         "Aucun véhicule. Saisissez la clé API dans la configuration du plugin, puis cliquez sur \"Ajouter un véhicule\"": "No vehicle. Enter the API key in the plugin configuration, then click “Add a vehicle”",
         "Autoriser la climatisation sur la batterie, voiture non branchée": "Allow air conditioning on battery power, car not plugged in",
         "Capacité utile de la batterie (kWh)": "Usable battery capacity (kWh)",
-        "Carte": "Map",
+        "Carte": "Card",
         "Catégorie": "Category",
         "Charge pilotée par un scénario (surplus solaire, batterie, heures creuses)": "Charging driven by a scenario (solar surplus, home battery, off-peak hours)",
         "Code S-PIN de ce véhicule": "S-PIN code of this vehicle",

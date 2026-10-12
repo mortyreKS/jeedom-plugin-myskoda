@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySkoda plugin changelog (beta)</title>
+<style>
+body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.55; color: #2b2830; max-width: 820px; margin: 0 auto; padding: 0 20px 60px; }
+header { background: #554E5E; color: #fff; margin: 0 -20px 30px; padding: 22px 20px; }
+header a { color: #fff; margin-right: 18px; }
+h1 { font-size: 1.7em; margin: 0 0 8px; }
+h2 { color: #554E5E; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 1.8em; }
+blockquote { border-left: 4px solid #554E5E; margin: 1em 0; padding: 4px 14px; background: #f3f1f5; }
+code { background: #f3f1f5; padding: 1px 5px; border-radius: 3px; }
+li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+<h1>MySkoda plugin changelog (beta)</h1>
+<a href="index.html">Documentation</a><a href="changelog_beta.html">Changelog (beta)</a>
+</header>
+<blockquote><p><strong>IMPORTANT</strong><br>Beta version. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating. Feedback is welcome.</p></blockquote>
+<p>The detailed history of the earlier beta versions is in the <a href="../fr_FR/changelog_beta.html">French changelog</a>.</p>
+<h2>0.83 — 12/10/2026</h2>
+<ul>
+<li>The plugin is available in English. In a Jeedom set to English (Settings → System → Configuration → General → Language), the tile, the logbook, the vehicles page and the plugin configuration are displayed in English, with the words of the MyŠkoda app in English where they exist (“Inspection”, “Oil change”, “Boot”, “Bonnet”, “Smart home”…). Dates follow the language, numbers use a decimal point, and the Excel export then separates its columns with commas. In a Jeedom set to French, nothing changes.</li>
+<li>Documentation: it is now available in English, and the “Documentation” and “Changelog” buttons open it in the Jeedom language. Its “Commands” section now gives the full list of commands, one by one, with their exact name, their type and their value (possible charging and air conditioning states, limits of the settings), grouped by topic. Useful for writing a scenario.</li>
+<li>This version brings no new feature: it adds English and completes the documentation.</li>
+<li>The “Card” layout of the tile is now called the “customised tile”: in French the word was confused with the “Map” tab of the logbook (thanks to the tester who reported it). On the vehicle page, the setting becomes “Tile customisation”, with the choices “Standard (default)” and “Customised”, and “Customised tile background colour”. Your choice is kept, only the words change.</li>
+<li>The customised tile and the logbook trips are now confirmed on an electric car (an Elroq).</li>
+<li>What stays in French for now: the diagnostic report, the plugin log lines and the screenshots of the documentation.</li>
+<li>Good to know: a command name is given once and for all, in the Jeedom language at the time the vehicle is added; changing the language afterwards does not rename existing commands.</li>
+</ul>
+<h2>0.3 to 0.82 — 06/10/2026 to 11/10/2026</h2>
+<p>Summary of the private beta, in French only at the time:</p>
+<ul>
+<li>Tile with the vehicle picture, battery or fuel, range, charging, air conditioning, locking and position; optional customised tile for designs.</li>
+<li>Charging and air conditioning commands, auxiliary heating with S-PIN code, charge limit and charging mode.</li>
+<li>Logbook on desktop and mobile: day, map, places and favourites, trips, charging sessions or refuelling, statistics, Excel export.</li>
+<li>“Managed charging” option for charging driven by a scenario (solar surplus, home battery, off-peak hours).</li>
+<li>Charging locations defined in the MyŠkoda app, read-only, with four info commands.</li>
+<li>Service follow-up entered by hand, diagnostic report without personal data.</li>
+<li>Installation from GitHub and updates through the Jeedom update centre.</li>
+</ul>
+</body>
+</html>

@@ -28,6 +28,10 @@ Si « Github » n'apparaît pas dans les types de source, activez-le d'abord dan
 
 ## Documentation
 
+En ligne, pour la version publiée : [mortyreks.github.io/jeedom-plugin-myskoda](https://mortyreks.github.io/jeedom-plugin-myskoda/) (français et anglais).
+
+Dans le dépôt :
+
 - [Documentation](docs/fr_FR/index.md)
 - [Journal des versions de la beta](docs/fr_FR/changelog_beta.md)
 

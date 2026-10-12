@@ -149,6 +149,10 @@ try {
         $eqLogic->setEnergy(init('energy'));
         $start = date('Y-m-d 00:00:00', strtotime(init('start')));
         $end = date('Y-m-d 23:59:59', strtotime(init('end')));
+        // Chaque trajet coûte plusieurs lectures d'historique : la période est plafonnée à un peu plus d'un an
+        if (strtotime($end) - strtotime($start) > 400 * 86400) {
+            $start = date('Y-m-d 00:00:00', strtotime($end) - 400 * 86400);
+        }
         ajax::success(array(
             'capacity' => $eqLogic->getCapacity(),
             'price' => $eqLogic->getDefaultPrice(),

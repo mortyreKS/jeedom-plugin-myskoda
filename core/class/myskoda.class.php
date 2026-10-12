@@ -216,7 +216,7 @@ class myskoda extends eqLogic {
       return;
     }
     foreach (eqLogic::byType(__CLASS__, true) as $eqLogic) {
-      if ($eqLogic->getConfiguration('vin') == '' || time() < $eqLogic->getNextRefresh()) {
+      if ($eqLogic->getConfiguration('vin') == '' || time() < max($eqLogic->getNextRefresh(), $eqLogic->getHold())) {
         continue;
       }
       // \Throwable : une donnée inattendue de Škoda ne doit pas empêcher la lecture des véhicules suivants
@@ -236,13 +236,28 @@ class myskoda extends eqLogic {
   // Vrai quand la dernière demande à Škoda n'a reçu aucune réponse (réseau, délai dépassé)
   private static $_unreachable = false;
 
-  // Une nouvelle clé ou un nouvel intervalle s'applique dès la minute suivante
+  // Une nouvelle clé ou un nouvel intervalle s'applique dès la minute suivante. Le core appelle ces fonctions à chaque
+  // enregistrement de la configuration, que la valeur ait changé ou non (core/class/config.class.php) : sans la
+  // comparaison, chaque clic sur « Sauvegarder » coûterait une requête du quota par véhicule.
   public static function postConfig_apikey($_value) {
-    self::resetAllSchedules();
+    if (self::configChanged('apikey')) {
+      self::resetAllSchedules();
+    }
   }
 
   public static function postConfig_interval($_value) {
-    self::resetAllSchedules();
+    if (self::configChanged('interval')) {
+      self::resetAllSchedules();
+    }
+  }
+
+  // Vrai si ce réglage a une autre valeur que lors du dernier enregistrement (ou si c'est le premier)
+  private static function configChanged($_key) {
+    $current = sha1((string) config::byKey($_key, __CLASS__));
+    $key = __CLASS__ . '::applied::' . $_key;
+    $applied = cache::byKey($key)->getValue(null);
+    cache::set($key, $current);
+    return $applied !== $current;
   }
 
   public static function resetAllSchedules() {
@@ -252,7 +267,9 @@ class myskoda extends eqLogic {
   }
 
   public static function postConfig_interval_active($_value) {
-    self::resetAllSchedules();
+    if (self::configChanged('interval_active')) {
+      self::resetAllSchedules();
+    }
   }
 
   // Valeur d'un tableau imbriqué par chemin « a.b.c » ; null si un niveau manque
@@ -522,6 +539,16 @@ class myskoda extends eqLogic {
     cache::set($this->scheduleKey(), (int) $_timestamp);
   }
 
+  // Attente demandée par Škoda (quota épuisé, service indisponible) : aucune lecture avant cette heure, même si
+  // l'échéance est remise à zéro par un enregistrement de la configuration ou une mise à jour du plugin
+  public function getHold() {
+    return (int) cache::byKey($this->scheduleKey() . '::hold')->getValue(0);
+  }
+
+  public function setHold($_timestamp) {
+    cache::set($this->scheduleKey() . '::hold', (int) $_timestamp);
+  }
+
   private function getApi() {
     $apiKey = config::byKey('apikey', __CLASS__);
     if ($apiKey == '') {
@@ -574,6 +601,10 @@ class myskoda extends eqLogic {
       $this->setNextRefresh($this->nextAfterError($e, $next));
       throw new Exception(self::describeError($e));
     }
+    // L'échéance normale est écrite dès maintenant : si le traitement qui suit échoue (commande impossible à
+    // enregistrer, donnée inattendue), le véhicule ne doit pas être relu à chaque minute jusqu'à épuiser le quota
+    $this->setNextRefresh($next);
+    $this->setHold(0);
     message::removeAll(__CLASS__, $this->messageKey());
     log::add(__CLASS__, 'debug', $this->getHumanName() . ' : ' . json_encode(self::maskPersonal($response), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
@@ -976,7 +1007,9 @@ class myskoda extends eqLogic {
     }
     if (in_array($status, array(429, 503))) {
       $retryAfter = $_e->getRetryAfter();
-      return time() + max(60, ($retryAfter === null) ? self::DEFAULT_RETRY_AFTER : $retryAfter);
+      $until = time() + max(60, ($retryAfter === null) ? self::DEFAULT_RETRY_AFTER : $retryAfter);
+      $this->setHold($until);
+      return $until;
     }
     return $_default;
   }
@@ -1892,15 +1925,16 @@ class myskoda extends eqLogic {
       $energy = ($capacity > 0 && $used !== null) ? round($capacity * $used / 100, 1) : null;
       $fromPosition = $this->positionAt($start);
       $toPosition = $ongoing ? null : $this->positionAt(date('Y-m-d H:i:s', strtotime($end) + 120));
-      $fromLabel = $this->placeAt($start);
-      $toLabel = $ongoing ? null : $this->placeAt(date('Y-m-d H:i:s', strtotime($end) + 120));
+      // Les lieux sont tirés des positions déjà lues : chaque lecture d'historique coûte une requête ou deux
+      $fromLabel = is_array($fromPosition) ? $this->placeLabel($fromPosition[0], $fromPosition[1]) : null;
+      $toLabel = is_array($toPosition) ? $this->placeLabel($toPosition[0], $toPosition[1]) : null;
       $trips[] = array(
         'type' => 'trip',
         'start' => $start,
         'end' => $end,
         'ongoing' => $ongoing,
         'minutes' => $minutes,
-        'from' => $this->placeAt($start),
+        'from' => $fromLabel,
         'fromPosition' => $fromPosition,
         'toPosition' => $toPosition,
         // Aller-retour : le véhicule est revenu se garer là d'où il était parti. Škoda ne donnant aucune position
@@ -1911,7 +1945,7 @@ class myskoda extends eqLogic {
           && (self::distanceMeters($fromPosition[0], $fromPosition[1], $toPosition[0], $toPosition[1]) <= self::PLACE_RADIUS
             || ($fromLabel !== null && $fromLabel !== '' && $fromLabel === $toLabel))),
         // La position d'arrivée est écrite juste après la fin du trajet, dans la même lecture
-        'to' => $ongoing ? null : $this->placeAt(date('Y-m-d H:i:s', strtotime($end) + 120)),
+        'to' => $toLabel,
         'distance' => $distance,
         'speed' => ($distance !== null && $minutes > 0) ? round($distance / ($minutes / 60)) : null,
         'levelStart' => $levelStart,
@@ -2193,6 +2227,9 @@ class myskoda extends eqLogic {
         getTemplate('core', $version, 'myskoda_card', __CLASS__));
       return $this->postToHtml($_version, template_replace($replace, getTemplate('core', $version, 'eqLogic')));
     }
+    // Le core renseigne cette classe dans son propre toHtml (eqLogic.class.php) ; sans elle, le texte « #eqLogic_class# »
+    // resterait tel quel dans la tuile
+    $replace['#eqLogic_class#'] = 'eqLogic_layout_default';
     $tags = $this->tileTags();
     $tags['#uid#'] = $replace['#uid#'];
     $replace['#cmd#'] = str_replace(array_keys($tags), array_values($tags), getTemplate('core', $version, 'myskoda', __CLASS__));
@@ -2785,11 +2822,27 @@ class myskodaCmd extends cmd {
     return true;
   }
 
+  // Valeur d'une commande à curseur. Appelée sans valeur ou hors bornes (scénario, API), la commande est refusée :
+  // sinon c'est 0 qui partirait vers la voiture, en consommant une requête du quota.
+  private static function sliderValue($_options, $_min, $_max) {
+    if (!is_array($_options) || !isset($_options['slider']) || !is_numeric($_options['slider'])) {
+      throw new Exception(__('Aucune valeur n\'a été donnée à cette commande', __FILE__));
+    }
+    $value = (float) $_options['slider'];
+    if ($value < $_min || $value > $_max) {
+      throw new Exception(sprintf(__('La valeur doit être comprise entre %s et %s', __FILE__), $_min, $_max));
+    }
+    return $value;
+  }
+
   // Exécution d'une commande
   public function execute($_options = array()) {
     $eqLogic = $this->getEqLogic();
     switch ($this->getLogicalId()) {
       case 'refresh':
+        if (time() < $eqLogic->getHold()) {
+          throw new Exception(sprintf(__('Škoda demande d\'attendre jusqu\'à %s avant une nouvelle lecture', __FILE__), date('H:i', $eqLogic->getHold())));
+        }
         $eqLogic->refreshFromApi();
         break;
       case 'charge_start':
@@ -2799,19 +2852,23 @@ class myskodaCmd extends cmd {
         $eqLogic->sendCommand('POST', 'charging/stop');
         break;
       case 'charge_limit_set':
-        $eqLogic->sendCommand('PUT', 'charging/limit', array('targetStateOfChargeInPercent' => (int) $_options['slider']));
+        $eqLogic->sendCommand('PUT', 'charging/limit', array('targetStateOfChargeInPercent' => (int) self::sliderValue($_options, 50, 100)));
         break;
       case 'charge_mode_set':
+        if (!isset($_options['select']) || trim((string) $_options['select']) == '') {
+          throw new Exception(__('Aucune valeur n\'a été donnée à cette commande', __FILE__));
+        }
         $eqLogic->sendCommand('PUT', 'charging/mode', array('chargeMode' => $_options['select']));
         break;
       case 'climate_start':
         $eqLogic->sendCommand('POST', 'air-conditioning/start', $eqLogic->climateStartBody());
         break;
       case 'climate_start_temp':
-        $eqLogic->sendCommand('POST', 'air-conditioning/start', $eqLogic->climateStartBody((float) $_options['slider']));
+        $eqLogic->sendCommand('POST', 'air-conditioning/start', $eqLogic->climateStartBody(self::sliderValue($_options, 16, 30)));
         break;
       case 'climate_temp_set':
-        $eqLogic->setClimateSetpoint($_options['slider']);
+        // La consigne hors bornes est ramenée entre 16 et 30 °C par setClimateSetpoint, qui refuse une valeur absente
+        $eqLogic->setClimateSetpoint(isset($_options['slider']) ? $_options['slider'] : null);
         break;
       case 'climate_stop':
         $eqLogic->sendCommand('POST', 'air-conditioning/stop');

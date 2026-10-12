@@ -18,6 +18,7 @@
         "Arrêter le chauffage auxiliaire du véhicule ?": "Stop the vehicle's auxiliary heating?",
         "Arrêté": "Off",
         "Arrêtée": "Off",
+        "Aucune valeur n'a été donnée à cette commande": "No value was given to this command",
         "Autonomie": "Range",
         "Autonomie AdBlue": "AdBlue range",
         "Autonomie carburant": "Fuel range",
@@ -112,6 +113,7 @@
         "La clé API ne couvre pas ce véhicule : vérifier les véhicules choisis à la création de la clé": "The API key does not cover this vehicle: check the vehicles selected when the key was created",
         "La consigne de climatisation doit être un nombre": "The air conditioning target temperature must be a number",
         "La recherche d'adresse n'a pas abouti. Cliquez sur la carte pour placer le point vous-même": "The address search failed. Click on the map to place the point yourself",
+        "La valeur doit être comprise entre %s et %s": "The value must be between %s and %s",
         "Latitude": "Latitude",
         "Le chauffage auxiliaire demande le code S-PIN du véhicule : le saisir sur la page de l'équipement": "Auxiliary heating requires the vehicle's S-PIN code: enter it on the device page",
         "Le numéro de série (VIN) doit comporter 17 lettres et chiffres, sans I, O ni Q": "The VIN must be 17 letters and digits, without I, O or Q",
@@ -234,6 +236,7 @@
         "à": "to",
         "état de": "status at",
         "état du": "status of",
+        "Škoda demande d'attendre jusqu'à %s avant une nouvelle lecture": "Škoda asks to wait until %s before a new reading",
         "Škoda indique que ces données sont désactivées sur le véhicule : %s. À vérifier dans l'application MyŠkoda : services en ligne (licence), consentement, mode privé du véhicule.": "Škoda reports that this data is disabled on the vehicle: %s. Check in the MyŠkoda app: online services (licence), consent, vehicle privacy mode.",
         "Škoda ne fournit plus les données du véhicule depuis": "Škoda has not been providing the vehicle data since",
         "Škoda propose pour ce véhicule une ou plusieurs commandes que cette version du plugin ne gère pas encore : %s. Vérifiez s'il existe une version plus récente du plugin, ou signalez-le à son auteur.": "Škoda offers one or more commands for this vehicle that this version of the plugin does not handle yet: %s. Check whether a more recent version of the plugin exists, or report it to its author."

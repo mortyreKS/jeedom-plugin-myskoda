@@ -88,7 +88,11 @@ class myskodaDiagnostic {
     $lines[] = self::line('actif', self::yesNo($_eqLogic->getIsEnable() == 1));
     $lines[] = self::line('visible', self::yesNo($_eqLogic->getIsVisible() == 1));
     $lines[] = self::line('numeroDeSerie.renseigne', self::yesNo($_eqLogic->getConfiguration('vin') != ''));
-    $lines[] = self::line('modele', self::info($_eqLogic, 'name'));
+    // Škoda ne donne pas le modèle à part : seulement le nom du véhicule, qui est le modèle tant que l'utilisateur ne
+    // l'a pas changé. Seul le modèle reconnu dans ce nom est écrit.
+    $name = $_eqLogic->getCmd('info', 'name');
+    $model = is_object($name) ? self::modelOf($name->execCmd()) : null;
+    $lines[] = self::line('modele', ($model === null) ? 'non reconnu' : $model);
     $lines[] = self::line('energies', implode(', ', $_eqLogic->getEnergies()));
     $lines[] = self::line('option.rechargePilotee', self::yesNo($_eqLogic->isManagedCharging()));
     $lines[] = self::line('option.prechauffageSansBranchement', self::yesNo($_eqLogic->getConfiguration('climate_without_power', 0) == 1));
@@ -213,6 +217,16 @@ class myskodaDiagnostic {
     return $lines;
   }
 
+  // Modèle Škoda reconnu dans un nom de véhicule, ou null
+  private static function modelOf($_name) {
+    foreach (array('Enyaq', 'Elroq', 'Epiq', 'Karoq', 'Kodiaq', 'Kamiq', 'Kushaq', 'Kylaq', 'Octavia', 'Superb', 'Fabia', 'Scala', 'Rapid', 'Citigo', 'Slavia', 'Yeti') as $model) {
+      if (stripos((string) $_name, $model) !== false) {
+        return $model;
+      }
+    }
+    return null;
+  }
+
   // Dernière passe : retire du texte tout ce qui identifie ou localise. Rend le nombre de remplacements faits.
   private static function scrub(&$_text, $_eqLogics) {
     $replaced = 0;
@@ -231,7 +245,13 @@ class myskodaDiagnostic {
     foreach ($_eqLogics as $eqLogic) {
       $rank++;
       $swap($eqLogic->getConfiguration('vin'), '[numéro de série]');
-      $swap($eqLogic->getConfiguration('spin'), '[S-PIN]');
+      // Le code S-PIN n'est jamais écrit dans le rapport, et il ne faut surtout pas le chercher pour le masquer :
+      // remplacer ses quatre chiffres partout (dates, kilométrage) reviendrait à les montrer
+      // Le nom donné au véhicule dans l'application MyŠkoda peut être personnel (« Enyaq de Marie »)
+      $name = $eqLogic->getCmd('info', 'name');
+      if (is_object($name) && self::modelOf($name->execCmd()) !== trim((string) $name->execCmd())) {
+        $swap($name->execCmd(), '[nom du véhicule]');
+      }
       $plate = $eqLogic->getCmd('info', 'license_plate');
       if (is_object($plate)) {
         $swap($plate->execCmd(), '[plaque]');

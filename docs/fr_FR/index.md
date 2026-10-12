@@ -22,7 +22,7 @@ Cet écran liste vos clés (cinq au plus), permet d'en créer une et affiche le 
 
 ### 2. Saisir la clé dans Jeedom
 
-Dans la configuration du plugin, collez la clé. Les deux rythmes de lecture (à l'arrêt et en charge, et en déplacement) peuvent rester tels quels.
+Dans la configuration du plugin, rubrique « Clé API MyŠkoda », collez la clé puis sauvegardez. Les deux rythmes de lecture (à l'arrêt et en charge, et en déplacement) peuvent rester tels quels. Une fois la clé enregistrée et un véhicule ajouté, le bandeau en tête de cette page indique jusqu'à quand la clé est valable et si vos véhicules sont à jour ; le tableau « Vos véhicules » donne pour chacun son niveau de batterie ou de carburant, sa dernière remontée et les requêtes qui lui restent dans l'heure.
 
 ### 3. Ajouter le véhicule
 
@@ -140,7 +140,7 @@ Ces commandes existent quand vous avez saisi les échéances sur la page du véh
 
 ### Utiliser les commandes
 
-Une commande est transmise au véhicule ; son effet se lit à la relecture suivante, une minute plus tard. Ce délai se règle dans la configuration du plugin (« Relecture après une commande », de 20 secondes à 2 minutes) : plus court, l'état suit plus vite dans un scénario ; trop court, la voiture n'a pas encore répondu et l'état ne changera qu'à la lecture d'après.
+Une commande est transmise au véhicule ; son effet se lit à la relecture suivante, une minute plus tard. Ce délai se règle dans la configuration du plugin (« Réglages avancés », puis « Relecture après une commande », de 20 secondes à 2 minutes) : plus court, l'état suit plus vite dans un scénario ; trop court, la voiture n'a pas encore répondu et l'état ne changera qu'à la lecture d'après.
 
 **Chauffer la voiture avant de partir.** Sur un véhicule électrique, c'est la commande « Démarrer la climatisation » (ou « Démarrer la climatisation à », avec une température) : elle chauffe ou rafraîchit l'habitacle selon la consigne, et ne demande aucun code. Elle s'utilise dans un scénario, par exemple le matin si la température extérieure est basse. 
 

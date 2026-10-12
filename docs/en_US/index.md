@@ -22,7 +22,7 @@ This screen lists your keys (five at most), lets you create one and shows the ve
 
 ### 2. Enter the key in Jeedom
 
-In the plugin configuration, paste the key. The two reading rates (while parked and while charging, and while driving) can be left as they are.
+In the plugin configuration, “MyŠkoda API key” section, paste the key then save. The two reading rates (while parked and while charging, and while driving) can be left as they are. Once the key is saved and a vehicle added, the banner at the top of this page shows until when the key is valid and whether your vehicles are up to date; the “Your vehicles” table gives, for each one, its battery or fuel level, its last update and the requests it has left this hour.
 
 ### 3. Add the vehicle
 
@@ -140,7 +140,7 @@ These commands exist once you have entered the due dates on the vehicle page (se
 
 ### Using the commands
 
-A command is sent to the vehicle; its effect shows at the next re-reading, one minute later. This delay is set in the plugin configuration (“Re-reading after a command”, from 20 seconds to 2 minutes): shorter, the state follows faster in a scenario; too short, the car has not answered yet and the state will only change at the following reading.
+A command is sent to the vehicle; its effect shows at the next re-reading, one minute later. This delay is set in the plugin configuration (“Advanced settings”, then “Re-reading after a command”, from 20 seconds to 2 minutes): shorter, the state follows faster in a scenario; too short, the car has not answered yet and the state will only change at the following reading.
 
 **Heating the car before leaving.** On an electric vehicle, this is the “Start air conditioning” command (or “Start air conditioning at”, with a temperature): it heats or cools the cabin according to the target temperature, and requires no code. It can be used in a scenario, for example in the morning if the outside temperature is low.
 

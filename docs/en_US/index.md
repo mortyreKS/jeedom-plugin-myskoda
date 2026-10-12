@@ -37,7 +37,7 @@ Commands are created at the first reading, done as soon as the vehicle is added:
 
 ## Commands
 
-The plugin creates the commands at the first reading, according to what the vehicle provides: an electric car has no fuel commands, a combustion car has no charging commands, and an action command only exists if Škoda announces it for that vehicle. The lists below give the name of each command as created in a Jeedom set to English, its type, and its value. A binary command is 1 for yes and 0 for no. Dates are written `YYYY-MM-DD HH:MM:SS`, in Jeedom time. When a state is given “as sent by Škoda”, the value is an upper-case English word; the tile shows it in plain words.
+The plugin creates the commands at the first reading, according to what the vehicle provides: an electric car has no fuel commands, a combustion car has no charging commands, and an action command only exists if Škoda announces it for that vehicle. The lists below give the name of each command as created in a Jeedom set to English, its type, and its value. A binary command is 1 for yes and 0 for no. Dates are written `YYYY-MM-DD HH:MM:SS`, in Jeedom time. When a state is given “as sent by Škoda”, the value is an upper-case English word; the tile shows it in plain words. Command values are always in metric units (km, km/h, °C), even when the “Display units” setting is on “Imperial (miles)”: that setting only converts what is shown on the tile and in the logbook. A scenario therefore always compares kilometres.
 
 ### Vehicle
 

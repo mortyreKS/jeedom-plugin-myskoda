@@ -37,7 +37,7 @@ Les commandes sont créées à la première lecture, faite dès l'ajout du véhi
 
 ## Commandes
 
-Le plugin crée les commandes à la première lecture, d'après ce que le véhicule fournit : une électrique n'a pas les commandes de carburant, une thermique n'a pas celles de la charge, et une commande d'action n'existe que si Škoda l'annonce pour ce véhicule. Les listes ci-dessous donnent le nom de chaque commande tel qu'il est créé dans un Jeedom en français, son type, et ce qu'elle vaut. Une commande binaire vaut 1 pour oui et 0 pour non. Les dates s'écrivent `AAAA-MM-JJ HH:MM:SS`, à l'heure de Jeedom. Quand un état est donné « tel que Škoda le transmet », la valeur est un mot en majuscules et en anglais ; la tuile, elle, l'affiche traduit.
+Le plugin crée les commandes à la première lecture, d'après ce que le véhicule fournit : une électrique n'a pas les commandes de carburant, une thermique n'a pas celles de la charge, et une commande d'action n'existe que si Škoda l'annonce pour ce véhicule. Les listes ci-dessous donnent le nom de chaque commande tel qu'il est créé dans un Jeedom en français, son type, et ce qu'elle vaut. Une commande binaire vaut 1 pour oui et 0 pour non. Les dates s'écrivent `AAAA-MM-JJ HH:MM:SS`, à l'heure de Jeedom. Quand un état est donné « tel que Škoda le transmet », la valeur est un mot en majuscules et en anglais ; la tuile, elle, l'affiche traduit. Les valeurs des commandes sont toujours en unités métriques (km, km/h, °C), même si le réglage « Unités d'affichage » est sur « Impérial (miles) » : ce réglage ne convertit que ce qui s'affiche sur la tuile et dans le journal de bord. Un scénario compare donc toujours des kilomètres.
 
 ### Véhicule
 

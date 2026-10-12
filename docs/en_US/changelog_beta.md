@@ -6,7 +6,7 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
-# 0.84 — in preparation
+# 0.84 — 12/10/2026
 
 - New “Display units” setting in the plugin configuration: “Metric (km)”, as before, or “Imperial (miles)”. In imperial, the tile, the logbook and its exports show distances in miles, speeds in mph, and consumption the way it is expressed in the United Kingdom: miles per kWh for an electric car, miles per gallon (UK gallon) for a combustion car. The setting applies to all vehicles and does not depend on the language.
 - Only the display changes: command values stay in kilometres, so that a scenario does not change meaning with this setting. Temperatures stay in °C, and the radius of favourite places in metres.

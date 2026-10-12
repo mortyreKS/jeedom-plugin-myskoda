@@ -4,7 +4,7 @@
 >
 >Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire. Les retours sont les bienvenus.
 
-# 0.84 — en préparation
+# 0.84 — 12/10/2026
 
 - Nouveau réglage « Unités d'affichage » dans la configuration du plugin : « Métrique (km) », comme jusqu'ici, ou « Impérial (miles) ». En impérial, la tuile, le journal de bord et ses exports affichent les distances en miles, les vitesses en mph, et les consommations comme on les exprime au Royaume-Uni : miles par kWh pour une électrique, miles par gallon (gallon britannique) pour une thermique. Le réglage vaut pour tous les véhicules et ne dépend pas de la langue.
 - Seul l'affichage change : les valeurs des commandes restent en kilomètres, pour qu'un scénario ne change pas de sens avec ce réglage. Les températures restent en °C, et le rayon des lieux favoris en mètres.

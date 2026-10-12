@@ -233,7 +233,9 @@ var myskodaJournal = (function() {
 
   function request(data, done, fail) {
     fetch(AJAX, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams(data) })
-      .then(function(response) { return response.json() })
+      .then(function(response) {
+        return response.json().catch(function() { throw new Error('{{Réponse illisible du serveur Jeedom. Rechargez la page ; si cela persiste, regardez le log du plugin.}}') })
+      })
       .then(function(answer) {
         if (answer.state != 'ok') {
           throw new Error(String(answer.result).replace(/<[^>]+>/g, ''))
@@ -244,6 +246,16 @@ var myskodaJournal = (function() {
   }
 
   function mount(root, options) {
+    // Cartes Leaflet et observateurs en cours : retirés quand le contenu est remplacé
+    var liveMaps = []
+    var liveObservers = []
+    function clearContent() {
+      liveObservers.forEach(function(observer) { observer.disconnect() })
+      liveMaps.forEach(function(chart) { try { chart.remove() } catch (error) {} })
+      liveObservers = []
+      liveMaps = []
+      content.innerHTML = ''
+    }
     var version = (options && options.version) || 'dashboard'
     var vehicles = []
     if (!document.getElementById('style_myskodaJournal')) {
@@ -376,7 +388,7 @@ var myskodaJournal = (function() {
     vehicle.addEventListener('change', refresh)
 
     function fail(text) {
-      content.innerHTML = ''
+      clearContent()
       message.textContent = text
     }
 
@@ -384,7 +396,7 @@ var myskodaJournal = (function() {
     // il reste vide sans raison apparente. L'avertissement nomme les commandes à recocher.
     function warnHistory(result) {
       if (result.now && result.now.unavailableSince) {
-        var down = el('div', 'msj-message', '{{Škoda ne fournit plus les données du véhicule depuis}} ' + hour(result.now.unavailableSince)
+        var down = el('div', 'msj-message', '{{Škoda ne fournit plus les données du véhicule depuis}} ' + (result.now.unavailableSince.substr(0, 10) == isoDate(new Date()) ? '' : dayLabel(result.now.unavailableSince) + ' ') + hour(result.now.unavailableSince)
           + '. {{Les valeurs sont les dernières reçues ; un trajet ou une recharge en cours se terminera à la bonne heure quand Škoda répondra de nouveau.}}')
         down.style.cssText = 'padding:8px 10px;border-radius:4px;background:rgba(240,173,78,0.18);opacity:1;'
         content.appendChild(down)
@@ -651,6 +663,7 @@ var myskodaJournal = (function() {
       content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Points de couleur : vos favoris. Point vert cerclé de blanc : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Cercle bleu en pointillés : aller-retour revenu à son point de départ. Points rouges : recharges ou pleins du jour choisi.}}'))
       loadLeaflet(function() {
         var chart = L.map(holder)
+        liveMaps.push(chart)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(chart)
         var bounds = []
         map.places.forEach(function(place) {
@@ -710,11 +723,13 @@ var myskodaJournal = (function() {
         setTimeout(remeasure, 300)
         setTimeout(remeasure, 1200)
         if (window.ResizeObserver) {
-          new ResizeObserver(function() {
+          var observer = new ResizeObserver(function() {
             if (document.body.contains(holder)) {
               chart.invalidateSize()
             }
-          }).observe(holder)
+          })
+          observer.observe(holder)
+          liveObservers.push(observer)
         }
       })
 
@@ -742,7 +757,12 @@ var myskodaJournal = (function() {
       // La page est redessinée après chaque modification. Sans précaution elle se vide un instant et le navigateur
       // remonte tout en haut : la hauteur est donc tenue pendant le changement, et la position de lecture remise.
       var reload = function(text) {
+        var asked = state.asked
         request({ action: 'getMap', id: vehicle.value, energy: state.energy }, function(fresh) {
+          // L'utilisateur a changé d'onglet ou de véhicule pendant la requête : ne rien dessiner par-dessus
+          if (state.asked != asked) {
+            return
+          }
           var positions = []
           for (var node = content; node; node = node.parentElement) {
             if (node.scrollTop > 0) {
@@ -751,7 +771,7 @@ var myskodaJournal = (function() {
           }
           var pageY = window.pageYOffset
           content.style.minHeight = content.offsetHeight + 'px'
-          content.innerHTML = ''
+          clearContent()
           renderPlaces(fresh)
           message.textContent = text
           positions.forEach(function(saved) { saved[0].scrollTop = saved[1] })
@@ -865,6 +885,7 @@ var myskodaJournal = (function() {
       }
       loadLeaflet(function() {
         chart = L.map(holder)
+        liveMaps.push(chart)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(chart)
         var bounds = []
         map.places.forEach(function(place, index) {
@@ -877,7 +898,9 @@ var myskodaJournal = (function() {
           } else {
             point = L.circleMarker([place.lat, place.lng], { radius: 7, color: '#6f7a80', fillOpacity: 0.8 }).addTo(chart)
           }
-          point.bindTooltip((place.name ? place.name + ' — ' : '') + place.address)
+          // Un nœud et non une chaîne : Leaflet écrirait une chaîne en HTML, or le nom et l'adresse viennent de Škoda,
+          // d'OpenStreetMap ou d'une saisie
+          point.bindTooltip(el('span', null, (place.name ? place.name + ' — ' : '') + place.address))
           // Un clic sur un lieu l'ouvre pour le voir de près et, au besoin, le déplacer
           point.on('click', function(event) {
             L.DomEvent.stopPropagation(event)
@@ -1284,7 +1307,7 @@ var myskodaJournal = (function() {
       }
       var text = String(value)
       // Un texte commençant par = + - @ serait pris pour une formule
-      if (/^[=+\-@]/.test(text)) {
+      if (/^[=+\-@\t\r]/.test(text)) {
         text = "'" + text
       }
       return '"' + text.replace(/"/g, '""') + '"'
@@ -1316,6 +1339,7 @@ var myskodaJournal = (function() {
       document.body.appendChild(link)
       link.click()
       link.remove()
+      setTimeout(function() { URL.revokeObjectURL(link.href) }, 1000)
     }
 
     function headline(text, exportAction) {
@@ -1625,7 +1649,7 @@ var myskodaJournal = (function() {
       if (state.tab == 'car') {
         state.asked = 'car'
         message.textContent = ''
-        content.innerHTML = ''
+        clearContent()
         renderCars()
         return
       }
@@ -1637,7 +1661,7 @@ var myskodaJournal = (function() {
             return
           }
           message.textContent = ''
-          content.innerHTML = ''
+          clearContent()
           renderPlaces(map)
         }, fail)
         return
@@ -1668,14 +1692,14 @@ var myskodaJournal = (function() {
               }
             }
             message.textContent = ''
-            content.innerHTML = ''
+            clearContent()
             warnHistory(result)
             renderMap(map, result)
           }, fail)
           return
         }
         message.textContent = ''
-        content.innerHTML = ''
+        clearContent()
         warnHistory(result)
         render(result)
       }, fail)

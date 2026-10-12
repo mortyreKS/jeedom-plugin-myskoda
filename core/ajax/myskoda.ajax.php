@@ -138,6 +138,9 @@ try {
             throw new Exception(__('Véhicule inconnu', __FILE__));
         }
         $eqLogic->setEnergy(init('energy'));
+        if (!is_string(init('date')) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', init('date'))) {
+            throw new Exception(__('Date invalide', __FILE__));
+        }
         ajax::success($eqLogic->getDay(date('Y-m-d', strtotime(init('date')))));
     }
 
@@ -147,6 +150,12 @@ try {
             throw new Exception(__('Véhicule inconnu', __FILE__));
         }
         $eqLogic->setEnergy(init('energy'));
+        // Une date illisible vaudrait 1970 et ferait relire tout l'historique
+        foreach (array('start', 'end') as $bound) {
+            if (!is_string(init($bound)) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', init($bound))) {
+                throw new Exception(__('Date invalide', __FILE__));
+            }
+        }
         $start = date('Y-m-d 00:00:00', strtotime(init('start')));
         $end = date('Y-m-d 23:59:59', strtotime(init('end')));
         // Chaque trajet coûte plusieurs lectures d'historique : la période est plafonnée à un peu plus d'un an

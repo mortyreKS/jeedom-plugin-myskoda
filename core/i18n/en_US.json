@@ -2,6 +2,7 @@
     "plugins/myskoda/core/ajax/myskoda.ajax.php": {
         "401 - Accès non autorisé": "401 - Unauthorized access",
         "Aucune méthode correspondante à": "No method matching",
+        "Date invalide": "Invalid date",
         "Le plugin MySkoda est désactivé. Réactivez-le dans le menu Plugins, Gestion des plugins, MySkoda.": "The MySkoda plugin is disabled. Enable it again in the Plugins menu, Plugins management, MySkoda.",
         "Véhicule inconnu": "Unknown vehicle"
     },
@@ -375,6 +376,7 @@
         "Recherche en cours…": "Searching…",
         "Rien ce jour-là.": "Nothing on that day.",
         "Réglages de ce lieu : prix, rayon, couleur, suppression": "Settings of this place: price, radius, colour, deletion",
+        "Réponse illisible du serveur Jeedom. Rechargez la page ; si cela persiste, regardez le log du plugin.": "Unreadable answer from the Jeedom server. Reload the page; if it persists, check the plugin log.",
         "Saisissez une adresse, ou cliquez sur la carte pour placer le point.": "Enter an address, or click on the map to place the point.",
         "Si le point n\\'est pas exactement au bon endroit, cliquez sur la carte pour le déplacer.": "If the point is not exactly in the right spot, click on the map to move it.",
         "Stationnée": "Parked",

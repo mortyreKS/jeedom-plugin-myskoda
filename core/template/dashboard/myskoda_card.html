@@ -104,6 +104,11 @@
         var options = { id: item.getAttribute('data-ms-cmd') }
         if (value !== undefined) options.value = { slider: value }
         item.classList.add('msc-attente')
+        // Commande refusée (quota, erreur de Škoda) : le bouton reprend son aspect, sinon il resterait estompé
+        options.error = function(error) {
+          item.classList.remove('msc-attente')
+          if (window.jeedomUtils && jeedomUtils.showAlert) jeedomUtils.showAlert({ message: error.message, level: 'danger' })
+        }
         jeedom.cmd.execute(options)
       }
       card.querySelectorAll('button[data-ms-cmd]').forEach(function(button) {
@@ -118,7 +123,7 @@
           var value = select.value
           var text = select.getAttribute('data-ms-confirm')
           if (!text) return send(select, value)
-          ask(text.replace('%s', select.options[select.selectedIndex].text), function() { send(select, value) }, function() { select.value = shown })
+          ask(text.replace('%s', select.options[select.selectedIndex].text), function() { shown = value; send(select, value) }, function() { select.value = shown })
         })
       })
       // Sur le dashboard, Jeedom fige la hauteur d'une tuile au moment où il la place : si son contenu grandit ensuite

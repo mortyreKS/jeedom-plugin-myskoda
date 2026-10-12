@@ -18,7 +18,10 @@
 // Appelée par l'application mobile à l'ouverture du panneau (nom imposé par le core : init + Myskoda + Panel).
 // Le journal de bord est commun au desktop et au mobile : voir desktop/js/journal.js
 function initMyskodaPanel() {
-  if (typeof panel == 'function') {
+  // Vide le menu latéral laissé par la page précédente (fonction du core mobile, mobile/js/application.js)
+  if (window.jeedomUtils && typeof jeedomUtils.loadPanel == 'function') {
+    jeedomUtils.loadPanel(false)
+  } else if (typeof panel == 'function') {
     panel(false)
   }
   myskodaJournal.mount(document.getElementById('div_myskodaJournal'), { version: 'mobile' })

@@ -108,7 +108,20 @@ if (!isConnect()) {
       </div>
     </div>
     <div class="form-group">
-      <label class="col-md-4 control-label">{{Prix du kWh (€)}}
+      <label class="col-md-4 control-label">{{Monnaie}}
+        <sup><i class="fas fa-question-circle tooltips" title="{{Signe affiché à côté des prix et des coûts, dans le journal de bord et ses exports. Aucun montant n'est converti : saisissez vos prix directement dans votre monnaie}}"></i></sup>
+      </label>
+      <div class="col-md-4">
+        <select class="configKey form-control" data-l1key="currency">
+          <option value="€">€</option>
+          <option value="£">£</option>
+          <option value="CHF">CHF</option>
+          <option value="$">$</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-md-4 control-label">{{Prix du kWh}} (<?php echo htmlspecialchars(myskoda::currency()); ?>)
         <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. Sert au journal de bord pour estimer le coût des trajets et des recharges. Un prix propre à un lieu (borne publique, par exemple) se saisit dans le journal de bord, onglet « Lieux »}}"></i></sup>
       </label>
       <div class="col-md-4">
@@ -116,7 +129,7 @@ if (!isConnect()) {
       </div>
     </div>
     <div class="form-group">
-      <label class="col-md-4 control-label">{{Prix du litre de carburant (€)}}
+      <label class="col-md-4 control-label">{{Prix du litre de carburant}} (<?php echo htmlspecialchars(myskoda::currency()); ?>)
         <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif, pour les véhicules thermiques. Sert au journal de bord pour estimer le coût des trajets et des pleins. Si un véhicule utilise un autre carburant, son propre prix se saisit sur l'équipement}}"></i></sup>
       </label>
       <div class="col-md-4">

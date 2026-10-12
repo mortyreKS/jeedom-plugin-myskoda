@@ -697,6 +697,19 @@ class myskoda extends eqLogic {
 
   const KM_TO_MILES = 0.621371;
 
+  // Signe de la monnaie affiché à côté des prix et des coûts, réglé dans la configuration du plugin. Aucun montant
+  // n'est converti : tous les prix sont saisis par l'utilisateur, dans sa monnaie.
+  private static $_currencies = array('€', '£', 'CHF', '$');
+
+  public static function currency() {
+    $currency = config::byKey('currency', __CLASS__, '€');
+    return in_array($currency, self::$_currencies, true) ? $currency : '€';
+  }
+
+  public static function currencies() {
+    return self::$_currencies;
+  }
+
   // Distance donnée en kilomètres, rendue dans l'unité d'affichage
   private static function distance($_km) {
     return self::isImperial() ? (float) $_km * self::KM_TO_MILES : (float) $_km;

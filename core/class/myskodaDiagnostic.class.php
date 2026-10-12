@@ -78,6 +78,7 @@ class myskodaDiagnostic {
     $lines[] = self::line('relecture.apresCommande.secondes', config::byKey('refresh_after_command', 'myskoda'));
     $lines[] = self::line('favoris.rayon.metres', myskoda::favoriteRadius());
     $lines[] = self::line('unites', myskoda::isImperial() ? 'imperial' : 'metric');
+    $lines[] = self::line('monnaie', myskoda::currency());
     $lines[] = self::line('prix.kwh.renseigne', self::yesNo(config::byKey('kwh_price', 'myskoda') != ''));
     $lines[] = self::line('prix.carburant.renseigne', self::yesNo(config::byKey('fuel_price', 'myskoda') != ''));
     return $lines;

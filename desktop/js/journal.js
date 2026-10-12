@@ -138,9 +138,16 @@ var myskodaJournal = (function() {
     return (shown[0] === null) ? EMPTY : format(shown[0], shown[1], decimals)
   }
 
-  // Nombre mis en forme avec son unité, sans conversion
+  // Nombre mis en forme avec son unité, sans conversion ; le signe de l'euro des unités est remplacé par la monnaie
+  // choisie dans la configuration du plugin (aucun montant n'est converti : les prix sont saisis dans cette monnaie)
   function format(value, unit, decimals) {
-    return Number(value).toLocaleString(LOCALE, { minimumFractionDigits: decimals || 0, maximumFractionDigits: decimals || 0 }) + (unit ? ' ' + unit : '')
+    return Number(value).toLocaleString(LOCALE, { minimumFractionDigits: decimals || 0, maximumFractionDigits: decimals || 0 }) + (unit ? ' ' + money(unit) : '')
+  }
+
+  var CURRENCY = '€'
+
+  function money(text) {
+    return String(text).split('€').join(CURRENCY)
   }
 
   // Unités d'affichage, réglées dans la configuration du plugin (action getUnits) : en « impérial », les distances
@@ -1315,6 +1322,7 @@ var myskodaJournal = (function() {
 
     // units : unité métrique de chaque colonne (null si la colonne n'en a pas), pour l'écrire dans l'unité d'affichage
     function exportCsv(name, headers, lines, units) {
+      headers = headers.map(money)
       if (IMPERIAL && units) {
         headers = headers.map(function(header, index) {
           return units[index] ? header.replace('(' + units[index] + ')', '(' + unitOf(units[index]) + ')') : header
@@ -1765,8 +1773,9 @@ var myskodaJournal = (function() {
         refresh()
       }, fail)
     }
-    request({ action: 'getUnits' }, function(units) {
-      IMPERIAL = (units == 'imperial')
+    request({ action: 'getUnits' }, function(settings) {
+      IMPERIAL = (settings.units == 'imperial')
+      CURRENCY = settings.currency || '€'
       start()
     }, start)
   }

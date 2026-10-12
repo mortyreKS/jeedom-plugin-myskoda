@@ -213,7 +213,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
 								</div>
 							</div>
 							<div class="form-group" data-ms-energy="fuel">
-								<label class="col-sm-4 control-label">{{Prix du litre pour ce véhicule (€)}}
+								<label class="col-sm-4 control-label">{{Prix du litre pour ce véhicule}} (<?php echo htmlspecialchars(myskoda::currency()); ?>)
 									<sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. À remplir si ce véhicule n'utilise pas le carburant du prix général de la configuration du plugin (diesel, E85…)}}"></i></sup>
 								</label>
 								<div class="col-sm-6">

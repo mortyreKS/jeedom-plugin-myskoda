@@ -8,7 +8,7 @@ Requirements: Jeedom 4.4 or later (the plugin is tested on Jeedom 4.6), on Debia
 
 Languages: French and English. The screens follow the Jeedom language (Settings → System → Configuration → General). The diagnostic report and the plugin log stay in French. Command names are given in the Jeedom language at the time the vehicle is added. The screenshots in this documentation were taken in French.
 
-Units: the “Display units” setting of the plugin configuration offers “Metric (km)” or “Imperial (miles)”. In imperial, the tile, the logbook and its exports show miles, mph, miles per kWh (electric) or miles per UK gallon (combustion). It applies to all vehicles and does not depend on the language. Only the display changes: command values stay in kilometres, temperatures in °C.
+Units: the “Display units” setting of the plugin configuration offers “Metric (km)” or “Imperial (miles)”. In imperial, the tile, the logbook and its exports show miles, mph, miles per kWh (electric) or miles per UK gallon (combustion). It applies to all vehicles and does not depend on the language. Only the display changes: command values stay in kilometres, temperatures in °C. The “Currency” setting, right next to it, chooses the symbol shown next to prices and costs (€, £, CHF or $); no amount is converted, prices are entered in your currency.
 
 ## Getting started
 

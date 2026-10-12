@@ -8,7 +8,7 @@ Prérequis : Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), s
 
 Langues : français et anglais. L'écran suit la langue de Jeedom (Réglages → Système → Configuration → Général) ; cette documentation existe dans les deux langues, et les boutons « Documentation » et « Changelog » de Jeedom l'ouvrent dans la langue de Jeedom ; le rapport de diagnostic et le log restent en français. Le nom des commandes est donné dans la langue de Jeedom au moment où le véhicule est ajouté.
 
-Unités : le réglage « Unités d'affichage » de la configuration du plugin propose « Métrique (km) » ou « Impérial (miles) ». En impérial, la tuile, le journal de bord et ses exports affichent des miles, des mph, des miles par kWh (électrique) ou des miles par gallon britannique (thermique). Il vaut pour tous les véhicules et ne dépend pas de la langue. Seul l'affichage change : les valeurs des commandes restent en kilomètres, les températures en °C.
+Unités : le réglage « Unités d'affichage » de la configuration du plugin propose « Métrique (km) » ou « Impérial (miles) ». En impérial, la tuile, le journal de bord et ses exports affichent des miles, des mph, des miles par kWh (électrique) ou des miles par gallon britannique (thermique). Il vaut pour tous les véhicules et ne dépend pas de la langue. Seul l'affichage change : les valeurs des commandes restent en kilomètres, les températures en °C. Le réglage « Monnaie », juste à côté, choisit le signe affiché près des prix et des coûts (€, £, CHF ou $) ; aucun montant n'est converti, les prix se saisissent dans votre monnaie.
 
 ## Mise en service
 

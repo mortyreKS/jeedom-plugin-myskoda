@@ -69,9 +69,9 @@ try {
         ajax::success(myskoda::getVersionLabel());
     }
 
-    // Unités d'affichage du journal de bord : « imperial » ou « metric »
+    // Réglages d'affichage du journal de bord : unités (« imperial » ou « metric ») et signe de la monnaie
     if (init('action') == 'getUnits') {
-        ajax::success(myskoda::isImperial() ? 'imperial' : 'metric');
+        ajax::success(array('units' => myskoda::isImperial() ? 'imperial' : 'metric', 'currency' => myskoda::currency()));
     }
 
     if (init('action') == 'getVehicles') {

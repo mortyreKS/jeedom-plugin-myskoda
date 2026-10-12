@@ -2,7 +2,7 @@
 
 >**IMPORTANT**
 >
->Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur deux véhicules électriques, deux Elroq (batterie, autonomie, points de recharge ; sur l'un des deux, détection de la recharge et commandes de charge et de climatisation). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire. Les retours sont les bienvenus.
+>Version beta. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire. Les retours sont les bienvenus.
 
 # 0.84 — en préparation
 
@@ -10,7 +10,7 @@
 - Seul l'affichage change : les valeurs des commandes restent en kilomètres, pour qu'un scénario ne change pas de sens avec ce réglage. Les températures restent en °C, et le rayon des lieux favoris en mètres.
 - Essayé sur les données d'exemple de la démonstration ; pas encore chez un utilisateur qui roule en miles.
 
-# 0.83 — en préparation
+# 0.83 — 12/10/2026
 
 - Le plugin est disponible en anglais. Dans un Jeedom réglé en anglais (Réglages → Système → Configuration → Général → Langue), la tuile, le journal de bord, la page des véhicules et la configuration du plugin s'affichent en anglais, avec les mots de l'application MyŠkoda en anglais quand ils existent (« Inspection », « Oil change », « Boot », « Bonnet », « Smart home »…). Les dates suivent la langue, les nombres s'écrivent avec un point décimal, et l'export pour Excel sépare alors ses colonnes par des virgules. Dans un Jeedom en français, rien ne change.
 - Documentation : la rubrique « Commandes » donne maintenant la liste complète des commandes, une par une, avec leur nom exact, leur type et ce qu'elles valent (états possibles de la charge et de la climatisation, bornes des réglages), rangées par thème. Utile pour écrire un scénario.

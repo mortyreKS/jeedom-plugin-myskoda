@@ -40,6 +40,9 @@ class myskoda extends eqLogic {
   const PAUSE_AFTER_DENIED = 3600;
   // Pause par défaut quand le serveur demande d'attendre sans dire combien, en secondes
   const DEFAULT_RETRY_AFTER = 300;
+  // Durée pendant laquelle une modification de plage envoyée est réappliquée sur le point de recharge relu, en
+  // secondes : la voiture l'applique en différé, et une seconde commande ne doit pas la défaire
+  const CHARGING_TIME_EDITS_MEMORY = 600;
 
   // Commandes info : identifiant => nom, sous-type, unité, historisée, visible
   private static $_infos = array(
@@ -130,7 +133,11 @@ class myskoda extends eqLogic {
   );
 
   // Opérations de l'API connues mais volontairement non proposées par le plugin : elles ne sont pas signalées comme nouvelles
-  private static $_ignoredOperations = array('updateChargingProfile');
+  private static $_ignoredOperations = array();
+
+  // Opérations gérées par des fonctions expérimentales : leurs commandes ne sont créées que si la case de la
+  // configuration du plugin est cochée (syncChargingTimeActions)
+  private static $_experimentalOperations = array('updateChargingProfile');
 
   private static $_chargeModeLabels = array(
     'MANUAL' => 'Manuel',
@@ -557,7 +564,9 @@ class myskoda extends eqLogic {
     if ($this->getConfiguration('vin') == '') {
       throw new Exception(__('Le numéro de série (VIN) n\'est pas renseigné', __FILE__));
     }
-    return new myskodaApi($apiKey);
+    // « api_url_test » n'a pas de champ sur la page de l'équipement : il ne sert qu'aux essais du développeur, qui
+    // branchent un seul équipement sur un faux serveur Škoda ; le rapport de diagnostic le signale s'il est resté renseigné
+    return new myskodaApi($apiKey, $this->getConfiguration('api_url_test', ''));
   }
 
   // Réponse de Škoda telle qu'elle est écrite dans le journal au niveau debug : sans ce qui identifie ou localise
@@ -658,9 +667,11 @@ class myskoda extends eqLogic {
         'min' => (self::dig($item, 'settings.minBatteryStateOfCharge.enabled') === false) ? null : self::dig($item, 'settings.minBatteryStateOfCharge.minimumBatteryStateOfChargeInPercent'),
         'current' => ($currentId !== null && self::dig($item, 'id') == $currentId),
         'times' => array(),
+        'slots' => array(),
         'timers' => array(),
       );
       foreach (is_array(self::dig($item, 'preferredChargingTimes')) ? $item['preferredChargingTimes'] : array() as $time) {
+        $profile['slots'][] = array('enabled' => (self::dig($time, 'enabled') === true), 'start' => self::dig($time, 'startTime'), 'end' => self::dig($time, 'endTime'));
         if (self::dig($time, 'enabled') === true) {
           $profile['times'][] = self::dig($time, 'startTime') . ' – ' . self::dig($time, 'endTime');
         }
@@ -1102,7 +1113,7 @@ class myskoda extends eqLogic {
     }
     // L'API de Škoda est jeune et peut s'enrichir (verrouillage, réveil du véhicule…). Une opération annoncée par le
     // véhicule que cette version du plugin ne connaît pas est signalée une fois, pour qu'elle puisse être ajoutée.
-    $unknown = array_values(array_diff($supported, array_keys(self::$_actions), self::$_ignoredOperations));
+    $unknown = array_values(array_diff($supported, array_keys(self::$_actions), self::$_ignoredOperations, self::$_experimentalOperations));
     sort($unknown);
     $known = (string) $this->getCache('unknownOperations', '');
     if (implode(',', $unknown) != $known) {
@@ -1160,6 +1171,206 @@ class myskoda extends eqLogic {
         }
       }
     }
+    $this->syncChargingTimeActions($_vehicle, $supported);
+  }
+
+  // FONCTION EXPÉRIMENTALE. Trois commandes par point de recharge pour ses heures de charge préférées : activer une
+  // plage, la désactiver, changer ses heures. Créées seulement si la case des fonctions expérimentales est cochée et que
+  // le véhicule annonce l'opération updateChargingProfile. Masquées par défaut : elles servent dans les scénarios.
+  // Le nom d'une commande reprend celui du point de recharge à sa création ; il n'est plus changé ensuite, l'utilisateur
+  // ayant pu le modifier. Un point de recharge supprimé dans l'application garde ses commandes, refusées à l'exécution.
+  private function syncChargingTimeActions($_vehicle, $_supported) {
+    if (!self::experimentalEnabled() || !in_array('updateChargingProfile', $_supported)) {
+      return;
+    }
+    $profiles = self::dig($_vehicle, 'chargingProfiles.profiles');
+    if (!is_array($profiles)) {
+      return;
+    }
+    foreach ($profiles as $profile) {
+      $id = self::dig($profile, 'id');
+      $count = is_array(self::dig($profile, 'preferredChargingTimes')) ? count($profile['preferredChargingTimes']) : 0;
+      if ($id === null || !is_numeric($id) || $count == 0) {
+        continue;
+      }
+      $profileName = trim((string) self::dig($profile, 'name'));
+      if ($profileName == '') {
+        $profileName = sprintf(__('Point de recharge %s', __FILE__), $id);
+      }
+      $items = array();
+      for ($i = 1; $i <= $count; $i++) {
+        $items[] = $i . '|' . sprintf(__('Plage %s', __FILE__), $i);
+      }
+      $listValue = implode(';', $items);
+      $titlePlaceholder = sprintf(__('Plage (1 à %s)', __FILE__), $count);
+      $definitions = array(
+        'on' => array(__('activer une plage', __FILE__), 'select'),
+        'off' => array(__('désactiver une plage', __FILE__), 'select'),
+        // Pas d'apostrophe : le core la retire des noms de commande (cleanComponanteName, core/php/utils.inc.php)
+        'hours' => array(__('heures de la plage', __FILE__), 'message'),
+      );
+      foreach ($definitions as $suffix => $definition) {
+        list($label, $subType) = $definition;
+        $logicalId = 'chprof_' . $id . '_' . $suffix;
+        $cmd = $this->getCmd('action', $logicalId);
+        $changed = false;
+        if (!is_object($cmd)) {
+          $cmd = new myskodaCmd();
+          $cmd->setName($this->freeCmdName($profileName . ' - ' . $label));
+          $cmd->setEqLogic_id($this->getId());
+          $cmd->setLogicalId($logicalId);
+          $cmd->setType('action');
+          $cmd->setSubType($subType);
+          $cmd->setConfiguration('profileId', (string) $id);
+          $cmd->setIsVisible(0);
+          if ($subType == 'message') {
+            $cmd->setDisplay('message_placeholder', __('Heures, par exemple 22:00-06:00', __FILE__));
+          }
+          $changed = true;
+        }
+        if ($subType == 'select' && $cmd->getConfiguration('listValue') != $listValue) {
+          $cmd->setConfiguration('listValue', $listValue);
+          $changed = true;
+        }
+        if ($subType == 'message' && $cmd->getDisplay('title_placeholder') != $titlePlaceholder) {
+          $cmd->setDisplay('title_placeholder', $titlePlaceholder);
+          $changed = true;
+        }
+        if ($changed) {
+          $cmd->save();
+        }
+      }
+    }
+  }
+
+  // Nom libre pour une nouvelle commande de cet équipement : deux points de recharge peuvent porter le même nom
+  private function freeCmdName($_name) {
+    $name = mb_substr($_name, 0, 120);
+    $candidate = $name;
+    $rank = 2;
+    while (is_object(cmd::byEqLogicIdCmdName($this->getId(), $candidate))) {
+      $candidate = $name . ' (' . $rank . ')';
+      $rank++;
+    }
+    return $candidate;
+  }
+
+  // Heures d'une plage saisies dans un scénario : « 22:00-06:00 », mais aussi « 22h00 - 6h00 » ou « 22-6 ».
+  // Rend les deux heures au format attendu par Škoda (HH:mm) ; lève une exception au message clair sinon.
+  public static function parseChargingHours($_text) {
+    $text = str_replace(array("\xE2\x80\x93", "\xE2\x80\x94", 'h', 'H', ' '), array('-', '-', ':', ':', ''), trim((string) $_text));
+    if (!preg_match('/^(\d{1,2})(?::(\d{2})?)?-(\d{1,2})(?::(\d{2})?)?$/', $text, $match)) {
+      throw new Exception(sprintf(__('Heures à écrire sous la forme 22:00-06:00 (reçu : %s)', __FILE__), $_text));
+    }
+    $times = array();
+    foreach (array(array(1, 2), array(3, 4)) as $index) {
+      $hour = (int) $match[$index[0]];
+      $minute = (isset($match[$index[1]]) && $match[$index[1]] !== '') ? (int) $match[$index[1]] : 0;
+      if ($hour > 23 || $minute > 59) {
+        throw new Exception(sprintf(__('Heure impossible : %s', __FILE__), $_text));
+      }
+      $times[] = sprintf('%02d:%02d', $hour, $minute);
+    }
+    return array('startTime' => $times[0], 'endTime' => $times[1]);
+  }
+
+  // Modifications de plages envoyées depuis moins de CHARGING_TIME_EDITS_MEMORY secondes
+  private function recentChargingTimeEdits() {
+    $edits = $this->getCache('chargingTimeEdits', array());
+    return array_values(array_filter(is_array($edits) ? $edits : array(), function ($_edit) {
+      return isset($_edit['at']) && $_edit['at'] > time() - self::CHARGING_TIME_EDITS_MEMORY;
+    }));
+  }
+
+  // FONCTION EXPÉRIMENTALE, jamais essayée sur un véhicule. Active, désactive ou change les heures de la plage n° $_slot
+  // (numérotée dans l'ordre où Škoda rend les plages) du point de recharge $_profileId. $_change : array('enabled' =>
+  // true|false) ou array('startTime' => 'HH:mm', 'endTime' => 'HH:mm').
+  // Škoda applique le point de recharge envoyé en entier (spécification de l'API, opération updateChargingProfile) : il
+  // est relu juste avant (une requête), seul le champ visé est changé, puis il est renvoyé tel que reçu, champs inconnus
+  // compris, sans être reconstruit. Les modifications envoyées depuis peu, que la voiture n'a peut-être pas encore
+  // appliquées, sont réappliquées sur le point relu. Rien n'est envoyé si la plage est déjà réglée ainsi.
+  public function changeChargingTime($_profileId, $_slot, $_change) {
+    self::checkExperimental();
+    // Numéro de plage contrôlé avant toute requête ; qu'il existe ne se sait qu'après la relecture
+    $slot = (is_numeric($_slot) && (string) (int) $_slot === trim((string) $_slot)) ? (int) $_slot : 0;
+    if ($slot < 1) {
+      throw new Exception(sprintf(__('Numéro de plage invalide : %s', __FILE__), $_slot));
+    }
+    if (time() < $this->getHold()) {
+      throw new Exception(sprintf(__('Škoda demande d\'attendre jusqu\'à %s avant une nouvelle demande', __FILE__), date('H:i', $this->getHold())));
+    }
+    $api = $this->getApi();
+    try {
+      $response = $api->getVehicle($this->getConfiguration('vin'), array('chargingProfiles'), false);
+    } catch (myskodaApiException $e) {
+      $this->applyQuotaHeaders($api);
+      throw new Exception(self::describeError($e));
+    }
+    $this->applyQuotaHeaders($api);
+    $vehicle = (isset($response->vehicle) && is_object($response->vehicle)) ? $response->vehicle : null;
+    if ($vehicle === null || !isset($vehicle->chargingProfiles->profiles) || !is_array($vehicle->chargingProfiles->profiles)) {
+      throw new Exception(__('Škoda n\'a pas rendu les points de recharge du véhicule : réessayer plus tard', __FILE__));
+    }
+    // Les points de recharge relus mettent aussi la tuile à jour
+    $this->applyChargingProfiles(json_decode(json_encode($vehicle), true));
+    $profile = null;
+    foreach ($vehicle->chargingProfiles->profiles as $item) {
+      if (is_object($item) && isset($item->id) && (string) $item->id === (string) $_profileId) {
+        $profile = $item;
+      }
+    }
+    if ($profile === null) {
+      throw new Exception(__('Ce point de recharge n\'existe plus dans l\'application MyŠkoda', __FILE__));
+    }
+    $slots = (isset($profile->preferredChargingTimes) && is_array($profile->preferredChargingTimes)) ? $profile->preferredChargingTimes : array();
+    if (count($slots) == 0) {
+      throw new Exception(__('Ce point de recharge n\'a aucune plage de charge', __FILE__));
+    }
+    if ($slot > count($slots)) {
+      throw new Exception(sprintf(__('La plage %s n\'existe pas : ce point de recharge a des plages numérotées de 1 à %s', __FILE__), $_slot, count($slots)));
+    }
+    $apply = function ($_timeId, $_values) use ($slots) {
+      foreach ($slots as $time) {
+        if (is_object($time) && isset($time->id) && (string) $time->id === (string) $_timeId) {
+          foreach ($_values as $key => $value) {
+            $time->$key = $value;
+          }
+        }
+      }
+    };
+    foreach ($this->recentChargingTimeEdits() as $edit) {
+      if ((string) $edit['profile'] === (string) $profile->id) {
+        $apply($edit['time'], $edit['change']);
+      }
+    }
+    $target = $slots[$slot - 1];
+    if (!is_object($target) || !isset($target->id)) {
+      throw new Exception(__('Plage illisible dans la réponse de Škoda', __FILE__));
+    }
+    $pending = json_encode($profile);
+    $apply($target->id, $_change);
+    if (isset($_change['enabled'])) {
+      $description = $_change['enabled'] ? 'activée' : 'désactivée';
+    } else {
+      $description = $_change['startTime'] . '-' . $_change['endTime'];
+    }
+    $description = 'point de recharge ' . $profile->id . ', plage ' . $slot . ' : ' . $description;
+    if (json_encode($profile) === $pending) {
+      log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . $description . ' (déjà réglée ainsi, rien n\'est envoyé)');
+      return;
+    }
+    // Journal : le point de recharge envoyé, sans son nom (souvent celui d'un lieu)
+    $logged = json_decode(json_encode($profile), true);
+    $logged['name'] = '***';
+    log::add(__CLASS__, 'debug', $this->getHumanName() . ' : point de recharge envoyé : ' . json_encode($logged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    $this->sendCommand('PUT', 'charging-profiles/' . rawurlencode((string) $profile->id), $profile, $description, array(
+      400 => __('Škoda a refusé le réglage envoyé', __FILE__),
+      404 => __('Škoda ne connaît pas ce point de recharge : il a peut-être été supprimé dans l\'application MyŠkoda', __FILE__),
+      412 => __('Le point de recharge envoyé ne correspond pas à celui demandé : relancer la commande', __FILE__),
+    ));
+    $edits = $this->recentChargingTimeEdits();
+    $edits[] = array('profile' => (string) $profile->id, 'time' => (string) $target->id, 'change' => $_change, 'at' => time());
+    $this->setCache('chargingTimeEdits', $edits);
   }
 
   private static function buildChargeModeList($_modes) {
@@ -1257,16 +1468,21 @@ class myskoda extends eqLogic {
   }
 
   // Envoie une commande au véhicule puis avance la prochaine lecture pour en voir l'effet
-  public function sendCommand($_method, $_operation, $_body = null) {
+  // $_description remplace le contenu envoyé dans le journal ; $_errors donne, par code HTTP, un message propre à
+  // l'opération quand Škoda ne précise pas la cause
+  public function sendCommand($_method, $_operation, $_body = null, $_description = null, $_errors = array()) {
     $api = $this->getApi();
     try {
       $api->command($_method, $this->getConfiguration('vin'), $_operation, $_body);
     } catch (myskodaApiException $e) {
       $this->applyQuotaHeaders($api);
+      if ($e->getProblemType() == '' && isset($_errors[$e->getHttpStatus()])) {
+        throw new Exception($_errors[$e->getHttpStatus()] . ' (' . $e->getMessage() . ')');
+      }
       throw new Exception(self::describeError($e));
     }
     $this->applyQuotaHeaders($api);
-    log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . $_method . ' ' . $_operation . ' ' . self::describeBody($_body));
+    log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . $_method . ' ' . $_operation . ' ' . (($_description !== null) ? $_description : self::describeBody($_body)));
     // Délai avant la relecture qui montre l'effet de la commande : réglable, entre 15 secondes et 5 minutes
     $delay = config::byKey('refresh_after_command', __CLASS__, self::REFRESH_AFTER_COMMAND);
     $delay = is_numeric($delay) ? max(15, min(300, (int) $delay)) : self::REFRESH_AFTER_COMMAND;
@@ -2319,6 +2535,17 @@ class myskoda extends eqLogic {
         }
       }
       $times = (isset($profile['times']) && count($profile['times']) > 0) ? $join($profile['times']) : __('aucune', __FILE__);
+      // Fonction expérimentale active : toutes les plages, numérotées comme dans les commandes, pour savoir laquelle modifier
+      if (self::experimentalEnabled() && isset($profile['slots']) && is_array($profile['slots']) && count($profile['slots']) > 0) {
+        $parts = array();
+        foreach (array_values($profile['slots']) as $index => $slot) {
+          $text = sprintf(__('n° %s', __FILE__), $index + 1) . ' ' . $slot['start'] . ' – ' . $slot['end'];
+          $parts[] = empty($slot['enabled'])
+            ? '<span class="ms-nowrap" style="opacity:0.55;">' . htmlspecialchars($text . ' (' . __('inactive', __FILE__) . ')') . '</span>'
+            : '<span class="ms-nowrap">' . htmlspecialchars($text) . '</span>';
+        }
+        $times = implode(', ', $parts);
+      }
       $timers = (isset($profile['timers']) && count($profile['timers']) > 0) ? $join($profile['timers']) : __('aucune', __FILE__);
       $list .= '<div class="ms-profile"><div class="ms-profile-name">' . (!empty($profile['current']) ? '<i class="fas fa-map-marker-alt ms-ok" title="' . __('Le véhicule est garé dans ce lieu', __FILE__) . '"></i> ' : '') . $name . '</div>'
         . '<div>' . $describe($profile) . '</div>'
@@ -2910,6 +3137,24 @@ class myskodaCmd extends cmd {
         break;
       case 'ventilation_stop':
         $eqLogic->sendCommand('POST', 'active-ventilation/stop');
+        break;
+      default:
+        // Heures de charge préférées d'un point de recharge (fonction expérimentale)
+        if (preg_match('/^chprof_(\d+)_(on|off|hours)$/', $this->getLogicalId(), $match)) {
+          myskoda::checkExperimental();
+          if ($match[2] == 'hours') {
+            $slot = isset($_options['title']) ? trim((string) $_options['title']) : '';
+            if ($slot == '') {
+              throw new Exception(__('Indiquer le numéro de la plage dans le titre', __FILE__));
+            }
+            $eqLogic->changeChargingTime($match[1], $slot, myskoda::parseChargingHours(isset($_options['message']) ? $_options['message'] : ''));
+          } else {
+            if (!isset($_options['select']) || trim((string) $_options['select']) == '') {
+              throw new Exception(__('Aucune valeur n\'a été donnée à cette commande', __FILE__));
+            }
+            $eqLogic->changeChargingTime($match[1], $_options['select'], array('enabled' => ($match[2] == 'on')));
+          }
+        }
         break;
     }
   }

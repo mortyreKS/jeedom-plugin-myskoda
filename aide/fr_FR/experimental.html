@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fonctions expérimentales : essais à faire</title>
+<style>
+body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.55; color: #2b2830; max-width: 820px; margin: 0 auto; padding: 0 20px 60px; }
+header { background: #554E5E; color: #fff; margin: 0 -20px 30px; padding: 22px 20px; }
+header a { color: #fff; margin-right: 18px; }
+h1 { font-size: 1.7em; margin: 0 0 8px; }
+h2 { color: #554E5E; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 1.8em; }
+blockquote { border-left: 4px solid #554E5E; margin: 1em 0; padding: 4px 14px; background: #f3f1f5; }
+code { background: #f3f1f5; padding: 1px 5px; border-radius: 3px; }
+li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+<h1>Fonctions expérimentales : essais à faire</h1>
+<a href="index.html">Documentation</a><a href="changelog_beta.html">Journal des versions (beta)</a>
+</header>
+<blockquote><p>Page à jour pour la version 0.85 beta du plugin, le 14/10/2026.</p></blockquote>
+<p>Une fonction expérimentale est écrite d'après la documentation de Škoda, mais personne ne l'a encore essayée sur un véhicule : l'auteur du plugin n'a pas de véhicule électrique. Elle a été vérifiée sans voiture, contre un faux serveur Škoda : ce que le plugin envoie, et ses refus. Ce qui reste à voir, c'est ce que fait la voiture. Merci à ceux qui acceptent de l'essayer.</p>
+<p>Pour l'activer : configuration du plugin (Plugins → Gestion des plugins → MySkoda), rubrique « Fonctions expérimentales », cocher « Activer les fonctions expérimentales », puis Sauvegarder. Décochée, les commandes déjà créées restent en place mais sont refusées.</p>
+<h2>Heures de charge préférées (version 0.85)</h2>
+<p>Trois commandes par point de recharge, décrites dans la <a href="index.html">documentation</a>, rubrique « Commandes » : activer une plage, la désactiver, changer ses heures. Elles reprennent les « Heures de charge préférées » de l'écran « Points de recharge » de l'application MyŠkoda.</p>
+<h3>Préparer</h3>
+<ol>
+<li>Mettre le plugin en version 0.85 ou plus récente, cocher la case (voir plus haut).</li>
+<li>Passer le log du plugin en Debug : configuration du plugin, cadre « Logs et surveillance », cocher « Debug », Sauvegarder.</li>
+<li>Sur la page du véhicule, cliquer « Rafraîchir » (ou attendre la lecture suivante, au plus 10 minutes) : les commandes apparaissent dans l'onglet « Commandes ». Leur nom commence par celui du point de recharge, par exemple « Maison - activer une plage ». Elles sont masquées sur la tuile : on s'en sert dans un scénario.</li>
+<li>Faire une capture de l'écran « Points de recharge » de l'application MyŠkoda, pour chaque point : c'est l'état de départ, qui servira à vérifier que rien d'autre n'a changé.</li>
+<li>Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé. <strong>Première question : la plage n° 2 de la tuile est-elle bien la deuxième de l'application ?</strong> Le plugin numérote les plages dans l'ordre où Škoda les donne ; que ce soit l'ordre de l'application n'est pas vérifié.</li>
+</ol>
+<p>Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00.</p>
+<p>Chaque modification coûte trois requêtes du quota de l'heure (relecture du point, envoi, relecture une minute après) : espacer les essais, en gardant de quoi lire le véhicule. Après chaque commande, attendre une à deux minutes avant de regarder l'application.</p>
+<h3>Essais</h3>
+<ol>
+<li><strong>Activer puis désactiver une plage existante.</strong> Choisir une plage inactive, l'activer, vérifier dans l'application ; puis la désactiver, vérifier de nouveau.</li>
+<li><strong>Changer les heures d'une plage</strong>, par exemple 21:00-07:00, puis une plage qui passe minuit dans l'autre sens si ce n'était pas le cas (par exemple 23:30-05:30). Vérifier dans l'application.</li>
+<li><strong>Vérifier que le reste est intact</strong>, en comparant avec la capture du départ : limite de charge, charge minimale, heures de départ, les autres plages du même point, et les autres points de recharge.</li>
+<li><strong>Une modification pendant une charge</strong>, si l'occasion se présente : la voiture accepte-t-elle, la charge continue-t-elle ?</li>
+<li>Facultatif : <strong>deux modifications à la suite</strong> dans un même scénario (deux blocs action), par exemple activer la plage 3 puis changer les heures de la plage 4. Les deux doivent se retrouver dans l'application.</li>
+</ol>
+<h3>Ce qu'il faut renvoyer</h3>
+<ul>
+<li>Pour chaque essai : ce qui a marché ou non, et le message affiché en cas de refus.</li>
+<li>Les captures de l'application, avant et après.</li>
+<li>Le <strong>rapport de diagnostic</strong> (configuration du plugin, « Diagnostic et support ») et le <strong>log <code>myskoda</code></strong> (menu Analyse → Logs) de la période des essais. Le plugin y retire le numéro de série, la plaque, l'adresse, les coordonnées et le nom des points de recharge ; la clé et le code S-PIN n'y figurent jamais.</li>
+</ul>
+<p>Après les essais : remettre le log au niveau par défaut ; la case peut rester cochée.</p>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 Suivi et pilotage d'un véhicule Škoda par l'API publique officielle MyŠkoda.
 
-> Documentation du plugin en version 0.84 beta, publiée le 12/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
+> Documentation du plugin en version 0.85 beta, publiée le 14/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
 
 Prérequis : Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie (elle n'est plus maintenue depuis le 31 août 2026) : la logique est de passer à Debian 12 au minimum. Pour autant, le plugin y fonctionne aujourd'hui : un testeur fait tourner la version 0.81 sous Debian 11.11 avec PHP 7.4.33 (installation, mise à jour, lecture du véhicule, points de recharge, rapport de diagnostic). Le plugin n'a ni démon ni dépendance.
 
@@ -80,6 +80,16 @@ Les quatre commandes « Point de recharge… » existent si des points de rechar
 - **Point de recharge : limite** (info/numeric, %) : limite de charge de ce point.
 - **Point de recharge : charge minimale** (info/numeric, %) : niveau en dessous duquel la voiture charge tout de suite.
 - **Point de recharge : prochaine charge** (info/string) : heure de la prochaine charge, quand Škoda la donne.
+
+### Heures de charge préférées (expérimental)
+
+**Fonction expérimentale, jamais essayée sur un véhicule** (voir la rubrique « Fonctions expérimentales », plus bas). Ces commandes n'existent que si la case « Activer les fonctions expérimentales » est cochée dans la configuration du plugin et que le véhicule permet de modifier ses points de recharge ; elles sont créées à la lecture suivante. Trois commandes par point de recharge, masquées sur la tuile (elles servent dans les scénarios). Leur nom commence par celui du point de recharge au moment de leur création, ici « Maison » ; renommer le point dans l'application ne renomme pas les commandes, et Jeedom retire les apostrophes des noms.
+
+- **Maison - activer une plage** (action/select) : active la plage choisie, de « Plage 1 » à « Plage 4 », des heures de charge préférées de ce point.
+- **Maison - désactiver une plage** (action/select) : désactive la plage choisie.
+- **Maison - heures de la plage** (action/message) : change les heures d'une plage sans changer son état. Numéro de la plage dans le titre (1 à 4), heures dans le message sous la forme 22:00-06:00 ; 22h00-6h00 et 22-6 sont aussi acceptés. Une plage peut passer minuit.
+
+Les plages sont numérotées dans l'ordre où Škoda les donne ; quand la case est cochée, la tuile les affiche numérotées (« Voir tous les points »). Le plugin relit le point de recharge juste avant de l'envoyer et ne change que la plage visée : limite, charge minimale, heures de départ et autres plages sont renvoyées telles quelles. Chaque modification coûte trois requêtes (relecture, envoi, relecture une minute après) ; une plage déjà réglée ainsi n'en coûte qu'une, rien n'est envoyé. Un numéro de plage qui n'existe pas ou des heures mal écrites sont refusés avant tout envoi, avec un message.
 
 ### Climatisation, chauffage et ventilation
 
@@ -246,6 +256,14 @@ Pour la révision et la vidange, indiquez l'échéance (kilométrage au compteur
 ## Données désactivées sur le véhicule
 
 Škoda peut répondre qu'une partie des données (verrouillage et ouvrants, carburant, kilométrage, position…) existe sur le véhicule mais est désactivée. Le plugin l'affiche sur la tuile, dans la commande « Services désactivés » et dans le centre de messages. Cela ne se règle pas dans Jeedom : il faut vérifier dans l'application MyŠkoda que les services en ligne du véhicule sont actifs (licence en cours de validité), que le consentement au partage des données est donné, et que le véhicule n'est pas en mode privé.
+
+## Fonctions expérimentales
+
+Certaines fonctions sont écrites d'après la documentation de Škoda mais n'ont encore jamais été essayées sur un véhicule. Elles sont réservées à ceux qui cochent « Activer les fonctions expérimentales » dans la configuration du plugin (case décochée par défaut) ; décochée ensuite, leurs commandes restent en place mais sont refusées, pour ne pas casser un scénario. Le rapport de diagnostic indique si la case est cochée.
+
+- Heures de charge préférées des points de recharge (version 0.85) : voir « Commandes », rubrique « Heures de charge préférées (expérimental) ».
+
+Les essais à faire et ce qu'il faut renvoyer sont décrits sur la page [Fonctions expérimentales : essais à faire](experimental.md). Une fonction cesse d'être expérimentale quand des essais réels l'ont confirmée ; ses commandes gardent alors leur nom.
 
 ## Signaler un problème
 

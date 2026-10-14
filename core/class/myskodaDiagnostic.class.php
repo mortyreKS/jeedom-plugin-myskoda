@@ -100,6 +100,10 @@ class myskodaDiagnostic {
     $lines[] = self::line('option.prechauffageSansBranchement', self::yesNo($_eqLogic->getConfiguration('climate_without_power', 0) == 1));
     $lines[] = self::line('spin.renseigne', self::yesNo($_eqLogic->getConfiguration('spin') != ''));
     $lines[] = self::line('capacite.renseignee', self::yesNo($_eqLogic->getCapacity() > 0));
+    // Adresse d'un faux serveur Škoda, réservée aux essais du développeur : ne doit jamais rester renseignée
+    if ($_eqLogic->getConfiguration('api_url_test') != '') {
+      $lines[] = self::line('api.adresseEssai', 'renseignée (à retirer)');
+    }
 
     $actions = array();
     foreach ($_eqLogic->getCmd('action') as $cmd) {

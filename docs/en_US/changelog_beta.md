@@ -2,9 +2,16 @@
 
 >**IMPORTANT**
 >
->Beta version. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating. Feedback is welcome.
+>Beta version, state of the tests on 14/10/2026. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating, and the experimental features. Feedback is welcome.
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
+
+# 0.85 — 14/10/2026
+
+- New “Experimental features” section in the plugin configuration, with an “Enable experimental features” box, unticked by default. An experimental feature is written from Škoda's documentation but has never been tried on a vehicle: it only appears for those who tick the box. If it is unticked later, its commands stay in place but are refused. Without the box, nothing changes.
+- **Experimental, not tested on a vehicle**: setting the preferred charging times of the charging locations (requested by a tester). Three commands per charging location, for scenarios: enable a charging time, disable it, change its hours (for example 22:00-06:00; a charging time can cross midnight). The plugin reads the charging location again just before sending it and only changes the targeted charging time; each change costs three requests. With the box ticked, the tile shows the charging times numbered, inactive ones greyed out.
+- Tried on the Jeedom box, without a vehicle, against a fake Škoda server: charging location sent back unchanged except the targeted charging time, unknown fields included; two changes in a row that do not cancel each other; clear refusals (charging time that does not exist, badly written hours, unknown charging location); names of the charging locations absent from the log. Not yet tried on a car: what the vehicle does, and whether the numbering of the charging times follows the app.
+- Documentation: new page “Experimental features: tests to run”, for those who want to try.
 
 # 0.84 — 12/10/2026
 

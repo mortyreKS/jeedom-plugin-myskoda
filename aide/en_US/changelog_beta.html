@@ -20,8 +20,15 @@ li { margin: 4px 0; }
 <h1>MySkoda plugin changelog (beta)</h1>
 <a href="index.html">Documentation</a><a href="changelog_beta.html">Changelog (beta)</a>
 </header>
-<blockquote><p><strong>IMPORTANT</strong><br>Beta version. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating. Feedback is welcome.</p></blockquote>
+<blockquote><p><strong>IMPORTANT</strong><br>Beta version, state of the tests on 14/10/2026. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating, and the experimental features. Feedback is welcome.</p></blockquote>
 <p>The detailed history of the earlier beta versions is in the <a href="../fr_FR/changelog_beta.html">French changelog</a>.</p>
+<h2>0.85 — 14/10/2026</h2>
+<ul>
+<li>New “Experimental features” section in the plugin configuration, with an “Enable experimental features” box, unticked by default. An experimental feature is written from Škoda's documentation but has never been tried on a vehicle: it only appears for those who tick the box. If it is unticked later, its commands stay in place but are refused. Without the box, nothing changes.</li>
+<li><strong>Experimental, not tested on a vehicle</strong>: setting the preferred charging times of the charging locations (requested by a tester). Three commands per charging location, for scenarios: enable a charging time, disable it, change its hours (for example 22:00-06:00; a charging time can cross midnight). The plugin reads the charging location again just before sending it and only changes the targeted charging time; each change costs three requests. With the box ticked, the tile shows the charging times numbered, inactive ones greyed out.</li>
+<li>Tried on the Jeedom box, without a vehicle, against a fake Škoda server: charging location sent back unchanged except the targeted charging time, unknown fields included; two changes in a row that do not cancel each other; clear refusals (charging time that does not exist, badly written hours, unknown charging location); names of the charging locations absent from the log. Not yet tried on a car: what the vehicle does, and whether the numbering of the charging times follows the app.</li>
+<li>Documentation: new page “Experimental features: tests to run”, for those who want to try.</li>
+</ul>
 <h2>0.84 — 12/10/2026</h2>
 <ul>
 <li>New “Display units” setting in the plugin configuration: “Metric (km)”, as before, or “Imperial (miles)”. In imperial, the tile, the logbook and its exports show distances in miles, speeds in mph, and consumption the way it is expressed in the United Kingdom: miles per kWh for an electric car, miles per gallon (UK gallon) for a combustion car. The setting applies to all vehicles and does not depend on the language.</li>

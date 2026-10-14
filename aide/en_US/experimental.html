@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Experimental features: tests to run</title>
+<style>
+body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.55; color: #2b2830; max-width: 820px; margin: 0 auto; padding: 0 20px 60px; }
+header { background: #554E5E; color: #fff; margin: 0 -20px 30px; padding: 22px 20px; }
+header a { color: #fff; margin-right: 18px; }
+h1 { font-size: 1.7em; margin: 0 0 8px; }
+h2 { color: #554E5E; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 1.8em; }
+blockquote { border-left: 4px solid #554E5E; margin: 1em 0; padding: 4px 14px; background: #f3f1f5; }
+code { background: #f3f1f5; padding: 1px 5px; border-radius: 3px; }
+li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+<h1>Experimental features: tests to run</h1>
+<a href="index.html">Documentation</a><a href="changelog_beta.html">Changelog (beta)</a>
+</header>
+<blockquote><p>Page up to date for version 0.85 beta of the plugin, on 14/10/2026.</p></blockquote>
+<p>An experimental feature is written from Škoda's documentation, but nobody has tried it on a vehicle yet: the plugin's author has no electric vehicle. It has been checked without a car, against a fake Škoda server: what the plugin sends, and what it refuses. What remains to be seen is what the car does. Thanks to those willing to try it.</p>
+<p>To enable it: plugin configuration (Plugins → Plugin management → MySkoda), “Experimental features” section, tick “Enable experimental features”, then Save. When unticked, the commands already created stay in place but are refused.</p>
+<h2>Preferred charging times (version 0.85)</h2>
+<p>Three commands per charging location, described in the <a href="index.html">documentation</a>, “Commands” section: enable a charging time, disable it, change its hours. They match the “Preferred charging times” of the “Charging locations” screen of the MyŠkoda app.</p>
+<h3>Getting ready</h3>
+<ol>
+<li>Update the plugin to version 0.85 or later, tick the box (see above).</li>
+<li>Set the plugin log to Debug: plugin configuration, “Logs and monitoring” frame, tick “Debug”, Save.</li>
+<li>On the vehicle page, click “Refresh” (or wait for the next reading, 10 minutes at most): the commands appear in the “Commands” tab. Their name starts with the charging location's name, for example “Home - enable a charging time”. They are hidden on the tile: they are meant for scenarios.</li>
+<li>Take a screenshot of the “Charging locations” screen of the MyŠkoda app, for each location: this is the starting point, used to check that nothing else changed.</li>
+<li>On the tile, unfold “See all locations”: with the box ticked, the four charging times of each location are numbered (no. 1 to no. 4), inactive ones greyed out. <strong>First question: is charging time no. 2 on the tile really the second one in the app?</strong> The plugin numbers the charging times in the order Škoda returns them; whether this is the app's order has not been checked.</li>
+</ol>
+<p>To run a command: create a scenario (Tools → Scenarios → Add), add an “Action” block, choose the command, fill in its values, save, then “Execute”. For “charging time hours”, the charging time number goes in the title field and the hours in the message field, written as 22:00-06:00.</p>
+<p>Each change costs three requests from the hourly quota (reading the location, sending, reading again one minute later): space out the tests, keeping enough to read the vehicle. After each command, wait one or two minutes before looking at the app.</p>
+<h3>Tests</h3>
+<ol>
+<li><strong>Enable then disable an existing charging time.</strong> Pick an inactive charging time, enable it, check in the app; then disable it, check again.</li>
+<li><strong>Change the hours of a charging time</strong>, for example 21:00-07:00, then one that crosses midnight if it did not already (for example 23:30-05:30). Check in the app.</li>
+<li><strong>Check that everything else is unchanged</strong>, comparing with the starting screenshot: charge limit, minimum charge, departure times, the other charging times of the same location, and the other charging locations.</li>
+<li><strong>A change during a charging session</strong>, if the opportunity arises: does the car accept it, does charging carry on?</li>
+<li>Optional: <strong>two changes in a row</strong> in one scenario (two action blocks), for example enable charging time 3 then change the hours of charging time 4. Both must show in the app.</li>
+</ol>
+<h3>What to send back</h3>
+<ul>
+<li>For each test: what worked or not, and the message shown when refused.</li>
+<li>The app screenshots, before and after.</li>
+<li>The <strong>diagnostic report</strong> (plugin configuration, “Diagnostics and support”) and the <strong><code>myskoda</code> log</strong> (Analysis → Logs menu) covering the tests. The plugin removes from them the VIN, the number plate, the address, the coordinates and the names of the charging locations; the key and the S-PIN never appear.</li>
+</ul>
+<p>After the tests: set the log back to its default level; the box can stay ticked.</p>
+</body>
+</html>

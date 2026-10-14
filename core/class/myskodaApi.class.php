@@ -55,19 +55,24 @@ class myskodaApi {
   const TIMEOUT = 15;
 
   private $apiKey;
+  private $baseUrl;
   private $lastHeaders = array();
 
-  public function __construct($_apiKey) {
+  // $_baseUrl ne sert qu'aux essais du développeur, contre un faux serveur Škoda installé sur la box
+  public function __construct($_apiKey, $_baseUrl = '') {
     $this->apiKey = trim($_apiKey);
+    $this->baseUrl = (trim((string) $_baseUrl) != '') ? rtrim(trim($_baseUrl), '/') : self::BASE_URL;
   }
 
-  // État complet du véhicule ; $_include limite la réponse aux parties demandées
-  public function getVehicle($_vin, $_include = array()) {
+  // État complet du véhicule ; $_include limite la réponse aux parties demandées. Avec $_assoc à false, la réponse est
+  // rendue en objets plutôt qu'en tableaux : c'est la seule forme qui se renvoie à Škoda à l'identique (un objet vide
+  // « {} » deviendrait sinon une liste vide « [] »).
+  public function getVehicle($_vin, $_include = array(), $_assoc = true) {
     $path = '/vehicles/' . rawurlencode($_vin);
     if (count($_include) > 0) {
       $path .= '?include=' . implode(',', array_map('rawurlencode', $_include));
     }
-    return $this->request('GET', $path);
+    return $this->request('GET', $path, null, $_assoc);
   }
 
   // Commande à distance, par exemple command('POST', $vin, 'charging/start')
@@ -81,10 +86,10 @@ class myskodaApi {
     return isset($this->lastHeaders[$name]) ? $this->lastHeaders[$name] : null;
   }
 
-  private function request($_method, $_path, $_body = null) {
+  private function request($_method, $_path, $_body = null, $_assoc = true) {
     $this->lastHeaders = array();
     $headers = array('X-API-Key: ' . $this->apiKey, 'Accept: application/json');
-    $ch = curl_init(self::BASE_URL . $_path);
+    $ch = curl_init($this->baseUrl . $_path);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_method);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
@@ -115,10 +120,15 @@ class myskodaApi {
     if ($raw === false) {
       throw new myskodaApiException('Serveur Škoda injoignable : ' . $error, 0);
     }
-    $data = ($raw === '') ? array() : json_decode($raw, true);
     if ($status >= 200 && $status < 300) {
-      return is_array($data) ? $data : array();
+      if ($_assoc) {
+        $data = ($raw === '') ? array() : json_decode($raw, true);
+        return is_array($data) ? $data : array();
+      }
+      $data = ($raw === '') ? null : json_decode($raw);
+      return is_object($data) ? $data : new stdClass();
     }
+    $data = ($raw === '') ? array() : json_decode($raw, true);
 
     $type = '';
     $detail = '';

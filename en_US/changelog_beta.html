@@ -22,6 +22,18 @@ li { margin: 4px 0; }
 </header>
 <blockquote><p><strong>IMPORTANT</strong><br>Beta version, state of the tests on 14/10/2026. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating, and the experimental features. Feedback is welcome.</p></blockquote>
 <p>The detailed history of the earlier beta versions is in the <a href="../fr_FR/changelog_beta.html">French changelog</a>.</p>
+<h2>0.86 — 14/10/2026</h2>
+<ul>
+<li>The tile can differ depending on the place (requested by a tester who wants the customised tile in the logbook but the standard tile on the dashboard and the phone). On the vehicle page, under “Tile customisation”, three optional settings: “On the dashboard and designs”, “On mobile”, “In the logbook”, each “As above (default)”, “Standard” or “Customised”. If you leave them alone, nothing changes.</li>
+<li>Tried on the Jeedom box: the three settings and their default value, and Jeedom's refresh of the logbook tile, which keeps the layout chosen for the logbook.</li>
+</ul>
+<h2>0.853 — 14/10/2026</h2>
+<p>Fixes after the tests of a second tester, on their Elroq: enabling, disabling and changing the hours of a charging time work, and so does changing the charging mode (“Immediate charging” is indeed Škoda's <code>MANUAL</code> mode).</p>
+<ul>
+<li>Preferred charging times: <strong>two changes to the same charging location sent back to back</strong> failed, Škoda refusing the second one (error 500). A change that follows a sending to the same location by less than 90 seconds is now queued, then sent about two minutes later, grouped with the following ones. A scenario can chain commands without a pause. A 500 refusal from Škoda is shown in plain words.</li>
+<li>Tile: “Cable unplugged” could show in the Charging block while the cable was plugged in, for example when the charger waits for a charging time. Škoda gives no charging state in that case, and the plugin kept the last one received. The “Charging state” command is now emptied (unknown state) when Škoda does not give it, and the tile then shows “Cable plugged in” from the cable state.</li>
+<li>Tried on the Jeedom box against a fake Škoda server that refuses close sendings: queuing, grouped sending, plain refusal, dropping if the box is unticked. Not yet on a car.</li>
+</ul>
 <h2>0.852 — 14/10/2026</h2>
 <ul>
 <li>Preferred charging times: the “charging time hours” command also accepts Jeedom's hhmm time format, for example 2200-0600, or 700-1500 when a morning time has lost its leading zero. A scenario that computes its start and end times in hhmm format can therefore send them as they are, by writing <code>#…start…#-#…end…#</code> in the message (requested by a tester who adjusts their charging times every day to the expected sunshine).</li>

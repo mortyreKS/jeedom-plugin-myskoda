@@ -1,6 +1,6 @@
 # Experimental features: tests to run
 
-> Page up to date for version 0.851 beta of the plugin, on 14/10/2026.
+> Page up to date for version 0.852 beta of the plugin, on 14/10/2026.
 
 An experimental feature is written from Škoda's documentation, but nobody has tried it on a vehicle yet: the plugin's author has no electric vehicle. It has been checked without a car, against a fake Škoda server: what the plugin sends, and what it refuses. What remains to be seen is what the car does. Thanks to those willing to try it.
 
@@ -19,7 +19,7 @@ Three commands per charging location, described in the [documentation](index.md)
 5. On the tile, unfold “See all locations”: with the box ticked, the four charging times of each location are numbered (no. 1 to no. 4), inactive ones greyed out, in the app's order (checked on an Elroq).
 6. Check that the charging mode is “Preferred charging times”: otherwise the car ignores the charging times.
 
-To run a command: create a scenario (Tools → Scenarios → Add), add an “Action” block, choose the command, fill in its values, save, then “Execute”. For “charging time hours”, the charging time number goes in the title field and the hours in the message field, written as 22:00-06:00.
+To run a command: create a scenario (Tools → Scenarios → Add), add an “Action” block, choose the command, fill in its values, save, then “Execute”. For “charging time hours”, the charging time number goes in the title field and the hours in the message field, written as 22:00-06:00 (or 2200-0600, in Jeedom's hhmm time format).
 
 Each change costs three requests from the hourly quota (reading the location, sending, reading again one minute later): space out the tests, keeping enough to read the vehicle. After each command, wait one or two minutes before looking at the app.
 

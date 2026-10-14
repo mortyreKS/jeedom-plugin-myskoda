@@ -2,7 +2,7 @@
 
 Suivi et pilotage d'un véhicule Škoda par l'API publique officielle MyŠkoda.
 
-> Documentation du plugin en version 0.851 beta, publiée le 14/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
+> Documentation du plugin en version 0.852 beta, publiée le 14/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
 
 Prérequis : Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie (elle n'est plus maintenue depuis le 31 août 2026) : la logique est de passer à Debian 12 au minimum. Pour autant, le plugin y fonctionne aujourd'hui : un testeur fait tourner la version 0.81 sous Debian 11.11 avec PHP 7.4.33 (installation, mise à jour, lecture du véhicule, points de recharge, rapport de diagnostic). Le plugin n'a ni démon ni dépendance.
 
@@ -87,7 +87,7 @@ Les quatre commandes « Point de recharge… » existent si des points de rechar
 
 - **Maison - activer une plage** (action/select) : active la plage choisie, de « Plage 1 » à « Plage 4 », des heures de charge préférées de ce point.
 - **Maison - désactiver une plage** (action/select) : désactive la plage choisie.
-- **Maison - heures de la plage** (action/message) : change les heures d'une plage sans changer son état. Numéro de la plage dans le titre (1 à 4), heures dans le message sous la forme 22:00-06:00 ; 22h00-6h00 et 22-6 sont aussi acceptés. Une plage peut passer minuit.
+- **Maison - heures de la plage** (action/message) : change les heures d'une plage sans changer son état. Numéro de la plage dans le titre (1 à 4), heures dans le message sous la forme 22:00-06:00 ; 22h00-6h00, 22-6 et le format hhmm des heures de Jeedom (2200-0600, ou 700-1500 pour 7 h 00 à 15 h 00) sont aussi acceptés. Une plage peut passer minuit. Dans un scénario, le message peut reprendre deux commandes qui donnent des heures : `#[Maison][Soleil][Début]#-#[Maison][Soleil][Fin]#` (Jeedom remplace chaque `#…#` par sa valeur avant d'envoyer la commande).
 
 **Les plages ne servent que si le mode de charge « Heures préférées » est choisi** : dans l'application (« Par heure », « Heures préférées » ; « Par type » donne « Recharge immédiate »), ou par la commande « Choisir le mode de charge ». Sinon, la voiture ne tient pas compte de leur programmation (constaté sur l'Elroq d'un testeur).
 

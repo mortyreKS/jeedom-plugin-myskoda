@@ -1,6 +1,6 @@
 # Fonctions expérimentales : essais à faire
 
-> Page à jour pour la version 0.851 beta du plugin, le 14/10/2026.
+> Page à jour pour la version 0.852 beta du plugin, le 14/10/2026.
 
 Une fonction expérimentale est écrite d'après la documentation de Škoda, mais personne ne l'a encore essayée sur un véhicule : l'auteur du plugin n'a pas de véhicule électrique. Elle a été vérifiée sans voiture, contre un faux serveur Škoda : ce que le plugin envoie, et ses refus. Ce qui reste à voir, c'est ce que fait la voiture. Merci à ceux qui acceptent de l'essayer.
 
@@ -19,7 +19,7 @@ Trois commandes par point de recharge, décrites dans la [documentation](index.m
 5. Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé, dans l'ordre de l'application (vérifié sur un Elroq).
 6. Vérifier que le mode de charge est « Heures préférées » (dans l'application : « Par heure », « Heures préférées ») : sinon la voiture ne tient pas compte des plages.
 
-Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00.
+Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00 (ou 2200-0600, au format hhmm des heures de Jeedom).
 
 Chaque modification coûte trois requêtes du quota de l'heure (relecture du point, envoi, relecture une minute après) : espacer les essais, en gardant de quoi lire le véhicule. Après chaque commande, attendre une à deux minutes avant de regarder l'application.
 

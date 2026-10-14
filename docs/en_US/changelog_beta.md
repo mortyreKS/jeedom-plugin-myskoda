@@ -6,6 +6,11 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.852 — 14/10/2026
+
+- Preferred charging times: the “charging time hours” command also accepts Jeedom's hhmm time format, for example 2200-0600, or 700-1500 when a morning time has lost its leading zero. A scenario that computes its start and end times in hhmm format can therefore send them as they are, by writing `#…start…#-#…end…#` in the message (requested by a tester who adjusts their charging times every day to the expected sunshine).
+- Tried on the Jeedom box: 17 ways of writing times, accepted or refused as expected; not yet from a tester's scenario.
+
 # 0.851 — 14/10/2026
 
 Revision of 0.85, after the first real test of the preferred charging times, on a tester's Elroq: the feature works, and the numbering of the charging times is the app's.

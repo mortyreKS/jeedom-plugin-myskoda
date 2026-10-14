@@ -1258,17 +1258,27 @@ class myskoda extends eqLogic {
     return $candidate;
   }
 
-  // Heures d'une plage saisies dans un scénario : « 22:00-06:00 », mais aussi « 22h00 - 6h00 » ou « 22-6 ».
+  // Heures d'une plage saisies dans un scénario : « 22:00-06:00 », mais aussi « 22h00 - 6h00 », « 22-6 », ou le format
+  // hhmm des heures de Jeedom (« 2200-0600 », « 2200-600 » : une heure du matin rendue par une commande numérique perd
+  // son zéro de tête). Demande d'un testeur le 2026-10-14, qui calcule ses heures au format hhmm.
   // Rend les deux heures au format attendu par Škoda (HH:mm) ; lève une exception au message clair sinon.
   public static function parseChargingHours($_text) {
     $text = str_replace(array("\xE2\x80\x93", "\xE2\x80\x94", 'h', 'H', ' '), array('-', '-', ':', ':', ''), trim((string) $_text));
-    if (!preg_match('/^(\d{1,2})(?::(\d{2})?)?-(\d{1,2})(?::(\d{2})?)?$/', $text, $match)) {
+    $parts = explode('-', $text);
+    if (count($parts) != 2) {
       throw new Exception(sprintf(__('Heures à écrire sous la forme 22:00-06:00 (reçu : %s)', __FILE__), $_text));
     }
     $times = array();
-    foreach (array(array(1, 2), array(3, 4)) as $index) {
-      $hour = (int) $match[$index[0]];
-      $minute = (isset($match[$index[1]]) && $match[$index[1]] !== '') ? (int) $match[$index[1]] : 0;
+    foreach ($parts as $part) {
+      if (preg_match('/^\d{3,4}$/', $part)) {
+        $hour = intdiv((int) $part, 100);
+        $minute = (int) $part % 100;
+      } elseif (preg_match('/^(\d{1,2})(?::(\d{2})?)?$/', $part, $match)) {
+        $hour = (int) $match[1];
+        $minute = (isset($match[2]) && $match[2] !== '') ? (int) $match[2] : 0;
+      } else {
+        throw new Exception(sprintf(__('Heures à écrire sous la forme 22:00-06:00 (reçu : %s)', __FILE__), $_text));
+      }
       if ($hour > 23 || $minute > 59) {
         throw new Exception(sprintf(__('Heure impossible : %s', __FILE__), $_text));
       }

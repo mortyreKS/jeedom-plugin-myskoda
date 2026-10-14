@@ -4,6 +4,11 @@
 >
 >Version beta, état des essais au 14/10/2026. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et les fonctions expérimentales. Les retours sont les bienvenus.
 
+# 0.852 — 14/10/2026
+
+- Heures de charge préférées : la commande « heures de la plage » accepte aussi le format hhmm des heures de Jeedom, par exemple 2200-0600, ou 700-1500 quand une heure du matin a perdu son zéro. Un scénario qui calcule ses heures de début et de fin au format hhmm peut donc les envoyer telles quelles, en écrivant dans le message `#…début…#-#…fin…#` (demande d'un testeur, qui adapte chaque jour ses heures de charge à l'ensoleillement prévu).
+- Essayé sur la box : 17 écritures d'heures, acceptées ou refusées comme attendu ; pas encore depuis le scénario d'un testeur.
+
 # 0.851 — 14/10/2026
 
 Révision de la 0.85, à la suite du premier essai réel des heures de charge préférées, sur l'Elroq d'un testeur : la fonction marche, et la numérotation des plages est bien celle de l'application.

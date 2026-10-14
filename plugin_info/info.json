@@ -1,7 +1,7 @@
 {
   "id": "myskoda",
   "name": "MySkoda",
-  "pluginVersion": "0.85",
+  "pluginVersion": "0.851",
   "description": {
     "fr_FR": "Suivi et pilotage des véhicules Škoda par l'API publique officielle MyŠkoda : batterie, autonomie, charge, climatisation, verrouillage, position, trajets et recharges.",
     "en_US": "Monitoring and control of Škoda vehicles through the official public MyŠkoda API: battery, range, charging, air conditioning, locking, position, trips and charging sessions."

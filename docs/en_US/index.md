@@ -2,7 +2,7 @@
 
 Monitoring and control of a Škoda vehicle through the official public MyŠkoda API.
 
-> Documentation of the plugin in version 0.85 beta, published on 14/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
+> Documentation of the plugin in version 0.851 beta, published on 14/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
 
 Requirements: Jeedom 4.4 or later (the plugin is tested on Jeedom 4.6), on Debian 12 or Debian 13. Debian 11 has reached end of life (it has not been maintained since 31 August 2026): the sensible path is to move to Debian 12 at least. That said, the plugin works on it today: a tester runs version 0.81 on Debian 11.11 with PHP 7.4.33 (installation, update, vehicle reading, charging locations, diagnostic report). The plugin has no daemon and no dependency.
 
@@ -89,7 +89,9 @@ The four “Charging location…” commands exist if charging locations are def
 - **Home - disable a charging time** (action/select): disables the chosen charging time.
 - **Home - charging time hours** (action/message): changes the hours of a charging time without changing its state. Charging time number in the title (1 to 4), hours in the message written as 22:00-06:00; 22h00-6h00 and 22-6 are also accepted. A charging time can cross midnight.
 
-Charging times are numbered in the order Škoda returns them; when the box is ticked, the tile shows them numbered (“See all locations”). The plugin reads the charging location again just before sending it and only changes the targeted charging time: limit, minimum charge, departure times and the other charging times are sent back unchanged. Each change costs three requests (reading, sending, reading again one minute later); a charging time already set that way costs only one, and nothing is sent. A charging time number that does not exist or badly written hours are refused before anything is sent, with a message.
+**The charging times are only used if the “Preferred charging times” charging mode is chosen**: in the app, or with the “Select charging mode” command. Otherwise the car ignores their schedule (observed on a tester's Elroq).
+
+Charging times are numbered in the order Škoda returns them, which is the app's order (checked on an Elroq); when the box is ticked, the tile shows them numbered (“See all locations”). The plugin reads the charging location again just before sending it and only changes the targeted charging time: limit, minimum charge, departure times and the other charging times are sent back unchanged. Each change costs three requests (reading, sending, reading again one minute later); a charging time already set that way costs only one, and nothing is sent. A charging time number that does not exist or badly written hours are refused before anything is sent, with a message.
 
 ### Air conditioning, heating and ventilation
 

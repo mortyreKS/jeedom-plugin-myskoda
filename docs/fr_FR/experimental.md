@@ -1,6 +1,6 @@
 # Fonctions expérimentales : essais à faire
 
-> Page à jour pour la version 0.85 beta du plugin, le 14/10/2026.
+> Page à jour pour la version 0.851 beta du plugin, le 14/10/2026.
 
 Une fonction expérimentale est écrite d'après la documentation de Škoda, mais personne ne l'a encore essayée sur un véhicule : l'auteur du plugin n'a pas de véhicule électrique. Elle a été vérifiée sans voiture, contre un faux serveur Škoda : ce que le plugin envoie, et ses refus. Ce qui reste à voir, c'est ce que fait la voiture. Merci à ceux qui acceptent de l'essayer.
 
@@ -16,7 +16,8 @@ Trois commandes par point de recharge, décrites dans la [documentation](index.m
 2. Passer le log du plugin en Debug : configuration du plugin, cadre « Logs et surveillance », cocher « Debug », Sauvegarder.
 3. Sur la page du véhicule, cliquer « Rafraîchir » (ou attendre la lecture suivante, au plus 10 minutes) : les commandes apparaissent dans l'onglet « Commandes ». Leur nom commence par celui du point de recharge, par exemple « Maison - activer une plage ». Elles sont masquées sur la tuile : on s'en sert dans un scénario.
 4. Faire une capture de l'écran « Points de recharge » de l'application MyŠkoda, pour chaque point : c'est l'état de départ, qui servira à vérifier que rien d'autre n'a changé.
-5. Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé. **Première question : la plage n° 2 de la tuile est-elle bien la deuxième de l'application ?** Le plugin numérote les plages dans l'ordre où Škoda les donne ; que ce soit l'ordre de l'application n'est pas vérifié.
+5. Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé, dans l'ordre de l'application (vérifié sur un Elroq).
+6. Vérifier que le mode de charge est « Heures préférées » (dans l'application : « Par heure », « Heures préférées ») : sinon la voiture ne tient pas compte des plages.
 
 Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00.
 
@@ -29,6 +30,7 @@ Chaque modification coûte trois requêtes du quota de l'heure (relecture du poi
 3. **Vérifier que le reste est intact**, en comparant avec la capture du départ : limite de charge, charge minimale, heures de départ, les autres plages du même point, et les autres points de recharge.
 4. **Une modification pendant une charge**, si l'occasion se présente : la voiture accepte-t-elle, la charge continue-t-elle ?
 5. Facultatif : **deux modifications à la suite** dans un même scénario (deux blocs action), par exemple activer la plage 3 puis changer les heures de la plage 4. Les deux doivent se retrouver dans l'application.
+6. **Changer de mode de charge depuis Jeedom** avec la commande « Choisir le mode de charge » : « Heures préférées », puis « Recharge immédiate ». L'application montre-t-elle le même choix ? (Que « Recharge immédiate » corresponde bien au mode `MANUAL` de Škoda n'est pas vérifié.)
 
 ### Ce qu'il faut renvoyer
 

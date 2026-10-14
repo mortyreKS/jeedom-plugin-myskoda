@@ -4,10 +4,18 @@
 >
 >Version beta, état des essais au 14/10/2026. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et les fonctions expérimentales. Les retours sont les bienvenus.
 
+# 0.851 — 14/10/2026
+
+Révision de la 0.85, à la suite du premier essai réel des heures de charge préférées, sur l'Elroq d'un testeur : la fonction marche, et la numérotation des plages est bien celle de l'application.
+
+- Les modes de charge prennent les mots de l'application MyŠkoda : « Heures préférées » au lieu de « Plages préférées », « Recharge immédiate » au lieu de « Manuel ». Seul le texte de la liste de la commande « Choisir le mode de charge » change : les valeurs envoyées sont les mêmes, vos scénarios aussi.
+- Documentation : les plages ne servent que si le mode de charge « Heures préférées » est choisi, dans l'application ou par la commande « Choisir le mode de charge ».
+- La fonction reste expérimentale : un seul véhicule l'a essayée.
+
 # 0.85 — 14/10/2026
 
 - Nouvelle rubrique « Fonctions expérimentales » dans la configuration du plugin, avec une case « Activer les fonctions expérimentales », décochée par défaut. Une fonction expérimentale est écrite d'après la documentation de Škoda mais n'a jamais été essayée sur un véhicule : elle n'apparaît que chez ceux qui cochent la case. Décochée ensuite, ses commandes restent en place mais sont refusées. Sans la case, rien ne change.
-- **Expérimental, non testé sur un véhicule** : programmation des heures de charge préférées des points de recharge (demande d'une testeuse). Trois commandes par point de recharge, pour les scénarios : activer une plage, la désactiver, changer ses heures (par exemple 22:00-06:00, une plage pouvant passer minuit). Le plugin relit le point de recharge juste avant de l'envoyer et ne change que la plage visée ; chaque modification coûte trois requêtes. Case cochée, la tuile affiche les plages numérotées, les inactives en grisé.
+- **Expérimental, non testé sur un véhicule** : programmation des heures de charge préférées des points de recharge (demande d'un testeur). Trois commandes par point de recharge, pour les scénarios : activer une plage, la désactiver, changer ses heures (par exemple 22:00-06:00, une plage pouvant passer minuit). Le plugin relit le point de recharge juste avant de l'envoyer et ne change que la plage visée ; chaque modification coûte trois requêtes. Case cochée, la tuile affiche les plages numérotées, les inactives en grisé.
 - Essayé sur la box, sans véhicule, contre un faux serveur Škoda : point de recharge renvoyé à l'identique sauf la plage visée, champs inconnus compris ; deux modifications à la suite qui ne s'annulent pas ; refus clairs (plage inexistante, heures mal écrites, point de recharge inconnu) ; noms des points de recharge absents du log. Pas encore essayé sur une voiture : ce que fait le véhicule, et si la numérotation des plages suit celle de l'application.
 - Documentation : nouvelle page « Fonctions expérimentales : essais à faire », pour ceux qui veulent essayer.
 

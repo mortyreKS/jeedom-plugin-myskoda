@@ -6,6 +6,14 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.851 — 14/10/2026
+
+Revision of 0.85, after the first real test of the preferred charging times, on a tester's Elroq: the feature works, and the numbering of the charging times is the app's.
+
+- The charging modes use the MyŠkoda app's words: “Preferred charging times” stays, “Immediate charging” replaces “Manual” (in French, the app's “Heures préférées” and “Recharge immédiate”). Only the text of the “Select charging mode” list changes: the values sent are the same, so are your scenarios.
+- Documentation: the charging times are only used if the “Preferred charging times” charging mode is chosen, in the app or with the “Select charging mode” command.
+- The feature stays experimental: only one vehicle has tried it.
+
 # 0.85 — 14/10/2026
 
 - New “Experimental features” section in the plugin configuration, with an “Enable experimental features” box, unticked by default. An experimental feature is written from Škoda's documentation but has never been tried on a vehicle: it only appears for those who tick the box. If it is unticked later, its commands stay in place but are refused. Without the box, nothing changes.

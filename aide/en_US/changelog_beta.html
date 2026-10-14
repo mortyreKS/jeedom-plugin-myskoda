@@ -22,6 +22,13 @@ li { margin: 4px 0; }
 </header>
 <blockquote><p><strong>IMPORTANT</strong><br>Beta version, state of the tests on 14/10/2026. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating, and the experimental features. Feedback is welcome.</p></blockquote>
 <p>The detailed history of the earlier beta versions is in the <a href="../fr_FR/changelog_beta.html">French changelog</a>.</p>
+<h2>0.851 — 14/10/2026</h2>
+<p>Revision of 0.85, after the first real test of the preferred charging times, on a tester's Elroq: the feature works, and the numbering of the charging times is the app's.</p>
+<ul>
+<li>The charging modes use the MyŠkoda app's words: “Preferred charging times” stays, “Immediate charging” replaces “Manual” (in French, the app's “Heures préférées” and “Recharge immédiate”). Only the text of the “Select charging mode” list changes: the values sent are the same, so are your scenarios.</li>
+<li>Documentation: the charging times are only used if the “Preferred charging times” charging mode is chosen, in the app or with the “Select charging mode” command.</li>
+<li>The feature stays experimental: only one vehicle has tried it.</li>
+</ul>
 <h2>0.85 — 14/10/2026</h2>
 <ul>
 <li>New “Experimental features” section in the plugin configuration, with an “Enable experimental features” box, unticked by default. An experimental feature is written from Škoda's documentation but has never been tried on a vehicle: it only appears for those who tick the box. If it is unticked later, its commands stay in place but are refused. Without the box, nothing changes.</li>

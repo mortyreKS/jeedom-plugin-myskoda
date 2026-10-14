@@ -139,11 +139,14 @@ class myskoda extends eqLogic {
   // configuration du plugin est cochée (syncChargingTimeActions)
   private static $_experimentalOperations = array('updateChargingProfile');
 
+  // Mots de l'application MyŠkoda quand ils sont connus : « Recharge immédiate » (choix « Par type ») et « Heures
+  // préférées » (choix « Par heure »), indiqués par un testeur le 2026-10-14 pour son Elroq, qui annonce MANUAL et
+  // PREFERRED_CHARGING_TIMES. Que MANUAL soit « Recharge immédiate » est supposé (deux modes, deux choix).
   private static $_chargeModeLabels = array(
-    'MANUAL' => 'Manuel',
+    'MANUAL' => 'Recharge immédiate',
     'TIMER' => 'Minuterie',
     'TIMER_CHARGING_WITH_CLIMATISATION' => 'Minuterie avec climatisation',
-    'PREFERRED_CHARGING_TIMES' => 'Plages préférées',
+    'PREFERRED_CHARGING_TIMES' => 'Heures préférées',
     'ONLY_OWN_CURRENT' => 'Production solaire seule',
     'IMMEDIATE_DISCHARGING' => 'Décharge immédiate',
     'HOME_STORAGE_CHARGING' => 'Stockage domestique',

@@ -20,7 +20,7 @@ li { margin: 4px 0; }
 <h1>Fonctions expérimentales : essais à faire</h1>
 <a href="index.html">Documentation</a><a href="changelog_beta.html">Journal des versions (beta)</a>
 </header>
-<blockquote><p>Page à jour pour la version 0.851 beta du plugin, le 14/10/2026.</p></blockquote>
+<blockquote><p>Page à jour pour la version 0.852 beta du plugin, le 14/10/2026.</p></blockquote>
 <p>Une fonction expérimentale est écrite d'après la documentation de Škoda, mais personne ne l'a encore essayée sur un véhicule : l'auteur du plugin n'a pas de véhicule électrique. Elle a été vérifiée sans voiture, contre un faux serveur Škoda : ce que le plugin envoie, et ses refus. Ce qui reste à voir, c'est ce que fait la voiture. Merci à ceux qui acceptent de l'essayer.</p>
 <p>Pour l'activer : configuration du plugin (Plugins → Gestion des plugins → MySkoda), rubrique « Fonctions expérimentales », cocher « Activer les fonctions expérimentales », puis Sauvegarder. Décochée, les commandes déjà créées restent en place mais sont refusées.</p>
 <h2>Heures de charge préférées (version 0.85)</h2>
@@ -34,7 +34,7 @@ li { margin: 4px 0; }
 <li>Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé, dans l'ordre de l'application (vérifié sur un Elroq).</li>
 <li>Vérifier que le mode de charge est « Heures préférées » (dans l'application : « Par heure », « Heures préférées ») : sinon la voiture ne tient pas compte des plages.</li>
 </ol>
-<p>Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00.</p>
+<p>Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00 (ou 2200-0600, au format hhmm des heures de Jeedom).</p>
 <p>Chaque modification coûte trois requêtes du quota de l'heure (relecture du point, envoi, relecture une minute après) : espacer les essais, en gardant de quoi lire le véhicule. Après chaque commande, attendre une à deux minutes avant de regarder l'application.</p>
 <h3>Essais</h3>
 <ol>

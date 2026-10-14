@@ -22,6 +22,11 @@ li { margin: 4px 0; }
 </header>
 <blockquote><p><strong>IMPORTANT</strong><br>Beta version, state of the tests on 14/10/2026. The plugin runs on a petrol vehicle (trips, fuel, position, service) and on three electric vehicles, three Elroq (battery, range, charging locations; on one of them, charging detection, charging and air conditioning commands, customised tile and trips). Not yet tried on a real vehicle: a hybrid, auxiliary heating, and the experimental features. Feedback is welcome.</p></blockquote>
 <p>The detailed history of the earlier beta versions is in the <a href="../fr_FR/changelog_beta.html">French changelog</a>.</p>
+<h2>0.852 — 14/10/2026</h2>
+<ul>
+<li>Preferred charging times: the “charging time hours” command also accepts Jeedom's hhmm time format, for example 2200-0600, or 700-1500 when a morning time has lost its leading zero. A scenario that computes its start and end times in hhmm format can therefore send them as they are, by writing <code>#…start…#-#…end…#</code> in the message (requested by a tester who adjusts their charging times every day to the expected sunshine).</li>
+<li>Tried on the Jeedom box: 17 ways of writing times, accepted or refused as expected; not yet from a tester's scenario.</li>
+</ul>
 <h2>0.851 — 14/10/2026</h2>
 <p>Revision of 0.85, after the first real test of the preferred charging times, on a tester's Elroq: the feature works, and the numbering of the charging times is the app's.</p>
 <ul>

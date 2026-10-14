@@ -6,6 +6,10 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.88 — 15/10/2026
+
+- Top of the logbook redesigned: one button per vehicle, with its name only (without the object), a coloured dot, its state and its battery or fuel level, read again every minute in Jeedom without any request to Škoda; underlined tabs with an icon; “Devices” and “Configuration” shortcuts as plain text on the right; a hybrid's “Electric view” and “Fuel view” as two joined segments. On a phone, vehicles and tabs scroll on one line. No setting or data changes.
+
 # 0.871 — 14/10/2026
 
 - Standard tile: when the Charging and Air conditioning blocks sit side by side (wide enough tile), the charging mode list squeezed its “Mode” label, written one letter per line, and shifted the rest of the block (reported by a tester, with a screenshot). The label no longer wraps, and the list shrinks when space runs short.

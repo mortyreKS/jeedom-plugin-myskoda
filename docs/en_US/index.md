@@ -2,7 +2,7 @@
 
 Monitoring and control of a Škoda vehicle through the official public MyŠkoda API.
 
-> Documentation of the plugin in version 0.871 beta, published on 14/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
+> Documentation of the plugin in version 0.88 beta, published on 15/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
 
 Requirements: Jeedom 4.4 or later (the plugin is tested on Jeedom 4.6), on Debian 12 or Debian 13. Debian 11 has reached end of life (it has not been maintained since 31 August 2026): the sensible path is to move to Debian 12 at least. That said, the plugin works on it today: a tester runs version 0.81 on Debian 11.11 with PHP 7.4.33 (installation, update, vehicle reading, charging locations, diagnostic report). The plugin has no daemon and no dependency.
 
@@ -193,7 +193,7 @@ On these screenshots, the addresses, the number plate and the places are example
 
 Enable “Show the desktop panel” in the plugin configuration: a MySkoda entry appears in the Home menu. “Show the mobile panel” does the same in the mobile app and the mobile version of Jeedom. The logbook is the same on both. The mobile version of Jeedom has no settings page: adding a vehicle and configuring the plugin are done in the desktop version, to which two buttons, “Vehicles” and “Configuration”, link at the bottom of the mobile logbook, for administrators.
 
-With several vehicles, a row of buttons at the top of the logbook selects the one you are looking at: every tab applies to that vehicle. The logbook adapts to its energy: battery, kWh and charging sessions for an electric car; fuel, litres and refuelling for a combustion car. For a plug-in hybrid, two buttons, “Electric view” and “Fuel view”, select the energy shown.
+At the top of the logbook, one button per vehicle shows its name, its state (parked, charging, driving) and its battery or fuel level, read again every minute in Jeedom without asking Škoda anything; with several vehicles, it selects the one you are looking at: every tab applies to that vehicle. The logbook adapts to its energy: battery, kWh and charging sessions for an electric car; fuel, litres and refuelling for a combustion car. For a plug-in hybrid, two buttons, “Electric view” and “Fuel view”, select the energy shown.
 
 - **Vehicle**: the tile of the selected car, with its buttons, as on the dashboard.
 - Top right, for administrators: shortcuts to the devices and to the plugin configuration.

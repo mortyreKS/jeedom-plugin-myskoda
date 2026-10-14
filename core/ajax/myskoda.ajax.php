@@ -80,7 +80,8 @@ try {
             if ($eqLogic->hasRight('r')) {
                 $vehicles[] = array('id' => $eqLogic->getId(), 'name' => $eqLogic->getHumanName(), 'kind' => $eqLogic->getKind(), 'energies' => $eqLogic->getEnergies(), 'real' => ($eqLogic->getConfiguration('vin') != ''),
                     // Nom court et image du véhicule, pour le reconnaître sur chaque fiche de trajet ou de recharge
-                    'short' => $eqLogic->getName(), 'image' => (strpos((string) $eqLogic->getImage(), 'https://') === 0) ? $eqLogic->getImage() : '');
+                    'short' => $eqLogic->getName(), 'image' => (strpos((string) $eqLogic->getImage(), 'https://') === 0) ? $eqLogic->getImage() : '',
+                    'status' => $eqLogic->panelStatus());
             }
         }
         // Les véhicules réels d'abord : un équipement sans numéro de série n'est pas interrogé

@@ -24,9 +24,41 @@ var myskodaJournal = (function() {
     '.msj { padding: 10px 15px; text-align: left; }',
     '.msj-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }',
     '.msj-bar select, .msj-bar input { height: 32px; padding: 2px 8px; max-width: 100%; }',
-    '.msj-btn { display: inline-block; padding: 5px 12px; border-radius: 4px; cursor: pointer; background: rgba(127,127,127,.2); user-select: none; }',
+    '.msj-btn { display: inline-block; padding: 5px 14px; border-radius: 99px; cursor: pointer; background: rgba(127,127,127,.12); border: 1px solid rgba(127,127,127,.35); user-select: none; white-space: nowrap; }',
+    '.msj-btn:hover { border-color: rgba(74,163,255,.6); }',
     'a.msj-btn, a.msj-btn:hover { color: inherit; text-decoration: none; }',
-    '.msj-btn.msj-on { background: #554E5E; color: #fff; font-weight: bold; }',
+    '.msj-btn.msj-on { background: #4aa3ff; border-color: #4aa3ff; color: #fff !important; font-weight: 600; }',
+    // Un bouton par véhicule : nom, point de couleur, état et niveau de la batterie
+    '.msj-vehicles { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; }',
+    '.msj-veh { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 12px; border-radius: 14px; background: rgba(127,127,127,.12); border: 2px solid transparent; cursor: pointer; color: inherit !important; min-width: 180px; user-select: none; }',
+    '.msj-veh:hover { border-color: rgba(74,163,255,.45); }',
+    '.msj-veh.msj-on { background: rgba(74,163,255,.14); border-color: #4aa3ff; }',
+    '.msj-veh > i { font-size: 22px; opacity: .6; }',
+    '.msj-veh.msj-on > i { color: #4aa3ff; opacity: 1; }',
+    '.msj-veh b { display: block; font-size: 14px; line-height: 1.25; }',
+    '.msj-veh small { display: block; font-size: 11px; opacity: .75; line-height: 1.3; white-space: nowrap; }',
+    '.msj-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; background: #9aa3ad; }',
+    '.msj-dot.charging { background: #3fb87f; } .msj-dot.moving { background: #4aa3ff; } .msj-dot.error { background: #ff5a52; }',
+    // Vue électrique ou carburant d\'un hybride : deux segments accolés
+    '.msj-seg { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid rgba(127,127,127,.3); align-self: center; }',
+    '.msj-seg span { padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 13px; opacity: .65; white-space: nowrap; user-select: none; }',
+    '.msj-seg span i { margin-right: 6px; }',
+    '.msj-seg span.msj-on { background: rgba(74,163,255,.22); color: #4aa3ff !important; opacity: 1; }',
+    // Onglets soulignés, raccourcis à droite
+    '.msj-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px; border-bottom: 2px solid rgba(127,127,127,.22); margin-bottom: 14px; }',
+    '.msj-tabs > div { display: flex; flex-wrap: wrap; gap: 2px; align-items: flex-end; }',
+    '.msj-tab { padding: 9px 16px; margin-bottom: -2px; border-bottom: 3px solid transparent; cursor: pointer; color: inherit !important; opacity: .7; font-size: 14px; white-space: nowrap; user-select: none; }',
+    '.msj-tab:hover { opacity: 1; }',
+    '.msj-tab.msj-on { opacity: 1; border-bottom-color: #4aa3ff; color: #4aa3ff !important; font-weight: 600; }',
+    '.msj-tab i, .msj-link i { margin-right: 6px; }',
+    '.msj a.msj-link, .msj a.msj-link:visited { font-size: 14px; opacity: .7; padding: 9px 12px; color: inherit !important; text-decoration: none !important; white-space: nowrap; }',
+    '.msj a.msj-link:hover { opacity: 1; }',
+    // Téléphone : véhicules et onglets défilent sur une ligne plutôt que de s\'empiler
+    '.msj-mobile .msj-vehicles { flex-wrap: nowrap; overflow-x: auto; gap: 8px; }',
+    '.msj-mobile .msj-veh { min-width: 150px; flex: 0 0 auto; }',
+    '.msj-mobile .msj-tabs > div { flex-wrap: nowrap; overflow-x: auto; }',
+    '.msj-mobile .msj-tab { padding: 9px 12px; font-size: 13px; }',
+    '.msj-mobile .msj-veh:not(.msj-on), .msj-mobile .msj-tab:not(.msj-on), .msj-mobile .msj-btn:not(.msj-on) { color: inherit !important; }',
     '.msj-message { margin: 10px 0; opacity: .8; }',
     '.msj-banner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 30px; padding: 12px 16px; border-radius: 8px; background: rgba(127,127,127,.14); margin-bottom: 12px; }',
     '.msj-state { font-size: 22px; font-weight: bold; }',
@@ -292,39 +324,49 @@ var myskodaJournal = (function() {
       }
     }
     var U = WORDS.electric
-    var vehicleBar = el('div', 'msj-bar')
+    if (version == 'mobile') {
+      root.classList.add('msj-mobile')
+    }
+    var vehicleBar = el('div', 'msj-vehicles')
     var state = { tab: 'car', day: isoDate(new Date()), start: isoDate(new Date(Date.now() - 30 * 86400000)), end: isoDate(new Date()), openPlaces: {} }
-    var bar = el('div', 'msj-bar')
+    var bar = el('div', 'msj-tabs')
+    var tabRow = el('div')
+    var linkRow = el('div')
+    var energyBar = el('div', 'msj-bar')
     var vehicle = el('select')
     var tabs = {}
+    var tabLabels = {}
     var dayBar = el('div', 'msj-bar')
     var periodBar = el('div', 'msj-bar')
     var message = el('div', 'msj-message')
     var content = el('div')
     bar.appendChild(vehicle)
-    ;[['car', '{{Véhicule}}'], ['day', '{{Journée}}'], ['map', '{{Carte}}'], ['places', '{{Lieux}}'], ['trips', '{{Trajets}}'], ['charges', '{{Recharges}}'], ['stats', '{{Statistiques}}']].forEach(function(tab) {
-      tabs[tab[0]] = el('span', 'msj-btn', tab[1])
+    bar.appendChild(tabRow)
+    bar.appendChild(linkRow)
+    ;[['car', 'fas fa-car', '{{Véhicule}}'], ['day', 'fas fa-calendar-day', '{{Journée}}'], ['map', 'fas fa-map-marked-alt', '{{Carte}}'], ['places', 'fas fa-map-marker-alt', '{{Lieux}}'],
+      ['trips', 'fas fa-route', '{{Trajets}}'], ['charges', 'fas fa-plug', '{{Recharges}}'], ['stats', 'fas fa-chart-bar', '{{Statistiques}}']].forEach(function(tab) {
+      tabs[tab[0]] = el('span', 'msj-tab')
+      tabs[tab[0]].appendChild(el('i', tab[1]))
+      tabLabels[tab[0]] = el('span', null, tab[2])
+      tabs[tab[0]].appendChild(tabLabels[tab[0]])
       tabs[tab[0]].addEventListener('click', function() {
         state.tab = tab[0]
         refresh()
       })
-      bar.appendChild(tabs[tab[0]])
+      tabRow.appendChild(tabs[tab[0]])
     })
 
     // Raccourcis vers les équipements et la configuration du plugin (administrateurs, panneau desktop)
-    ;[['equipments', 'fas fa-car', '{{Équipements}}'], ['configuration', 'fas fa-wrench', '{{Configuration}}']].forEach(function(shortcut, index) {
+    ;[['equipments', 'fas fa-car', '{{Équipements}}'], ['configuration', 'fas fa-wrench', '{{Configuration}}']].forEach(function(shortcut) {
       var url = root.getAttribute('data-' + shortcut[0])
       if (!url) {
         return
       }
-      var link = el('a', 'msj-btn')
+      var link = el('a', 'msj-link')
       link.href = url
       link.appendChild(el('i', shortcut[1]))
-      link.appendChild(document.createTextNode(' ' + shortcut[2]))
-      if (index == 0) {
-        link.style.marginLeft = 'auto'
-      }
-      bar.appendChild(link)
+      link.appendChild(document.createTextNode(shortcut[2]))
+      linkRow.appendChild(link)
     })
 
     var previous = el('span', 'msj-btn', '‹')
@@ -391,7 +433,7 @@ var myskodaJournal = (function() {
     })
 
     vehicle.style.display = 'none'
-    ;[vehicleBar, bar, dayBar, periodBar, message, content].forEach(function(node) { root.appendChild(node) })
+    ;[vehicleBar, bar, energyBar, dayBar, periodBar, message, content].forEach(function(node) { root.appendChild(node) })
     vehicle.addEventListener('change', refresh)
 
     function fail(text) {
@@ -1606,6 +1648,60 @@ var myskodaJournal = (function() {
       content.appendChild(note(result))
     }
 
+    // Un bouton par véhicule, même s'il n'y en a qu'un : il montre d'un coup d'œil l'état et le niveau de la batterie
+    function paintVehicles() {
+      vehicleBar.innerHTML = ''
+      vehicleBar.style.display = (vehicles.length > 0) ? '' : 'none'
+      vehicles.forEach(function(item) {
+        var button = el('span', 'msj-veh' + ((String(item.id) == vehicle.value) ? ' msj-on' : ''))
+        button.appendChild(el('i', item.kind == 'fuel' ? 'fas fa-gas-pump' : 'fas fa-charging-station'))
+        var text = el('span')
+        text.appendChild(el('b', null, item.short || item.name))
+        var status = item.status || {}
+        var parts = []
+        if (status.text) {
+          parts.push(status.text)
+        }
+        if (status.level !== null && status.level !== undefined) {
+          parts.push(status.level + ' %')
+        }
+        var line = el('small')
+        if (parts.length > 0) {
+          line.appendChild(el('span', 'msj-dot' + (status.class ? ' ' + status.class : '')))
+        }
+        line.appendChild(document.createTextNode(parts.length > 0 ? parts.join(' · ') : EMPTY))
+        text.appendChild(line)
+        button.appendChild(text)
+        button.addEventListener('click', function() {
+          if (vehicle.value == item.id) {
+            return
+          }
+          vehicle.value = item.id
+          refresh()
+        })
+        vehicleBar.appendChild(button)
+      })
+    }
+
+    // État des véhicules relu chaque minute dans les commandes de Jeedom (aucune requête vers Škoda). Jeedom change de
+    // page sans recharger : la relecture s'arrête d'elle-même quand le journal n'est plus dans la page.
+    var statusTimer = setInterval(function() {
+      if (!document.body.contains(root)) {
+        clearInterval(statusTimer)
+        return
+      }
+      request({ action: 'getVehicles' }, function(list) {
+        var byId = {}
+        list.forEach(function(item) { byId[item.id] = item })
+        vehicles.forEach(function(item) {
+          if (byId[item.id]) {
+            item.status = byId[item.id].status
+          }
+        })
+        paintVehicles()
+      }, function() {})
+    }, 60000)
+
     function refresh() {
       Object.keys(tabs).forEach(function(name) {
         tabs[name].classList.toggle('msj-on', name == state.tab)
@@ -1615,10 +1711,8 @@ var myskodaJournal = (function() {
       periodBar.style.display = (byDay || state.tab == 'car' || state.tab == 'places') ? 'none' : ''
       clearInterval(state.timer)
       var energies = []
-      vehicleBar.innerHTML = ''
       vehicles.forEach(function(item) {
-        var selected = (String(item.id) == vehicle.value)
-        if (selected) {
+        if (String(item.id) == vehicle.value) {
           // Un hybride rechargeable a deux énergies : le journal en montre une à la fois, au choix
           energies = item.energies || [item.kind]
           if (energies.indexOf(state.energy) < 0) {
@@ -1626,34 +1720,26 @@ var myskodaJournal = (function() {
           }
           U = WORDS[state.energy] || WORDS.electric
         }
-        if (vehicles.length < 2) {
-          return
-        }
-        var button = el('span', 'msj-btn' + (selected ? ' msj-on' : ''))
-        button.appendChild(el('i', item.kind == 'fuel' ? 'fas fa-gas-pump' : 'fas fa-charging-station'))
-        button.appendChild(document.createTextNode(' ' + item.name))
-        button.addEventListener('click', function() {
-          vehicle.value = item.id
-          refresh()
-        })
-        vehicleBar.appendChild(button)
       })
+      paintVehicles()
+      energyBar.innerHTML = ''
+      energyBar.style.display = (energies.length > 1) ? '' : 'none'
       if (energies.length > 1) {
+        var segments = el('div', 'msj-seg')
         ;[['electric', 'fas fa-bolt', '{{Vue électrique}}'], ['fuel', 'fas fa-gas-pump', '{{Vue carburant}}']].forEach(function(choice) {
-          var button = el('span', 'msj-btn' + (state.energy == choice[0] ? ' msj-on' : ''))
+          var button = el('span', state.energy == choice[0] ? 'msj-on' : '')
           button.appendChild(el('i', choice[1]))
-          button.appendChild(document.createTextNode(' ' + choice[2]))
+          button.appendChild(document.createTextNode(choice[2]))
           button.addEventListener('click', function() {
             state.energy = choice[0]
             refresh()
           })
-          if (choice[0] == 'electric') {
-            button.style.marginLeft = 'auto'
-          }
-          vehicleBar.appendChild(button)
+          segments.appendChild(button)
         })
+        energyBar.appendChild(segments)
       }
-      tabs.charges.textContent = U.refillTab
+      tabLabels.charges.textContent = U.refillTab
+      tabs.charges.firstChild.className = U.icon
       dayInput.value = state.day
       startInput.value = state.start
       endInput.value = state.end
@@ -1724,8 +1810,8 @@ var myskodaJournal = (function() {
     request({ action: 'getVersion' }, function(version) {
       var tag = el('span', null, 'v' + version)
       tag.title = '{{Version du plugin MySkoda}}'
-      tag.style.cssText = 'align-self:center;font-size:11px;opacity:0.6;white-space:nowrap;margin-left:' + (bar.querySelector('a.msj-btn') ? '8px' : 'auto') + ';'
-      bar.appendChild(tag)
+      tag.style.cssText = 'align-self:center;font-size:11px;opacity:0.6;white-space:nowrap;padding:0 4px 0 8px;'
+      linkRow.appendChild(tag)
     }, function() {})
 
     // Version mobile : Jeedom n'y a aucune page de réglage. Un administrateur y trouve donc, en bas du journal, deux

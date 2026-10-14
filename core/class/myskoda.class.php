@@ -2257,6 +2257,37 @@ class myskoda extends eqLogic {
     return (count($energies) > 0) ? $energies : array('electric');
   }
 
+  // État résumé pour le bouton du véhicule en haut du journal de bord : mêmes règles que la pastille de la tuile
+  // personnalisée, et niveau de la batterie (ou du carburant). Lu dans les commandes, rien n'est demandé à Škoda.
+  public function panelStatus() {
+    $get = function ($_logicalId) {
+      $cmd = $this->getCmd('info', $_logicalId);
+      if (!is_object($cmd)) {
+        return null;
+      }
+      $value = $cmd->execCmd();
+      return ($value === '' || $value === null) ? null : $value;
+    };
+    $status = array('text' => '', 'class' => '');
+    if ($get('unavailable_since') !== null) {
+      $status = array('text' => __('Données indisponibles', __FILE__), 'class' => 'error');
+    } elseif ($get('moving') == 1) {
+      $status = array('text' => __('En déplacement', __FILE__), 'class' => 'moving');
+    } elseif ($get('charging') == 1) {
+      $status = array('text' => __('En charge', __FILE__), 'class' => 'charging');
+    } elseif ($get('plug_connected') == 1) {
+      $status = array('text' => __('Garée · branchée', __FILE__), 'class' => 'parked');
+    } elseif ($get('moving') !== null) {
+      $status = array('text' => __('Garée', __FILE__), 'class' => 'parked');
+    }
+    $level = $get('battery_level');
+    if ($level === null) {
+      $level = $get('fuel_level');
+    }
+    $status['level'] = ($level === null) ? null : round((float) $level);
+    return $status;
+  }
+
   // Pour un hybride, choisit l'énergie sous laquelle le journal est calculé (batterie et recharges, ou carburant et pleins)
   private $_energy = null;
 

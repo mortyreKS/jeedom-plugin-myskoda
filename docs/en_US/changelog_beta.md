@@ -6,6 +6,10 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.871 — 14/10/2026
+
+- Standard tile: when the Charging and Air conditioning blocks sit side by side (wide enough tile), the charging mode list squeezed its “Mode” label, written one letter per line, and shifted the rest of the block (reported by a tester, with a screenshot). The label no longer wraps, and the list shrinks when space runs short.
+
 # 0.87 — 14/10/2026
 
 - The charging mode shows on the tile (requested by a tester): in the Charging block, a list shows the current mode, for example “Preferred charging times”, and lets you change it. It only appears if the vehicle offers at least two modes; elsewhere, nothing changes. On the customised tile, the change asks for confirmation. Changing mode costs two requests, like the other commands. Unticking “Show” on the “Select charging mode” command removes the list from the tile.

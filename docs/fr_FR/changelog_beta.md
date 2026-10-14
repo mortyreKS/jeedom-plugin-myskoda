@@ -4,6 +4,10 @@
 >
 >Version beta, état des essais au 14/10/2026. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et les fonctions expérimentales. Les retours sont les bienvenus.
 
+# 0.871 — 14/10/2026
+
+- Tuile standard : quand les blocs Charge et Climatisation sont côte à côte (tuile assez large), la liste du mode de charge écrasait son libellé « Mode », écrit une lettre par ligne, et décalait le reste du bloc (signalé par un testeur, capture à l'appui). Le libellé ne se coupe plus, et la liste se réduit si la place manque.
+
 # 0.87 — 14/10/2026
 
 - Le mode de charge s'affiche sur la tuile (demande d'un testeur) : dans le bloc Charge, une liste montre le mode actuel, par exemple « Heures préférées », et permet d'en changer. Elle n'apparaît que si le véhicule propose au moins deux modes ; ailleurs, rien ne change. Sur la tuile personnalisée, le changement demande une confirmation. Changer de mode coûte deux requêtes, comme les autres commandes. Décocher « Afficher » sur la commande « Choisir le mode de charge » retire la liste de la tuile.

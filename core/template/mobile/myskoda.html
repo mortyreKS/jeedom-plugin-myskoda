@@ -32,6 +32,11 @@
     .myskoda-tile .ms-actions a.ms-small { flex: 0 0 auto; opacity: 0.75; }
     .myskoda-tile select.ms-select { height: 28px; line-height: 1.2; padding: 2px 22px 2px 6px; width: auto; display: inline-block; font-weight: bold; }
     .myskoda-tile .ms-row { align-items: center; }
+    /* Libellé jamais coupé ; une liste trop large (mode de charge) se réduit dans une colonne étroite, au lieu d'écraser
+       son libellé (constaté chez un testeur le 2026-10-14, colonnes Charge et Climatisation côte à côte) */
+    .myskoda-tile .ms-row > span:first-child { flex: 0 0 auto; white-space: nowrap; }
+    .myskoda-tile .ms-row > span:last-child { min-width: 0; }
+    .myskoda-tile select.ms-select { max-width: 100%; text-overflow: ellipsis; }
     .myskoda-tile .ms-service { margin-top: 6px; }
     .myskoda-tile .ms-foot { margin-top: 6px; font-size: 12px; opacity: 0.8; }
     .myskoda-tile .ms-profile-zone { margin-top: 8px; }

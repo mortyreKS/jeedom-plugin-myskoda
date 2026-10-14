@@ -6,6 +6,14 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.853 — 14/10/2026
+
+Fixes after the tests of a second tester, on their Elroq: enabling, disabling and changing the hours of a charging time work, and so does changing the charging mode (“Immediate charging” is indeed Škoda's `MANUAL` mode).
+
+- Preferred charging times: **two changes to the same charging location sent back to back** failed, Škoda refusing the second one (error 500). A change that follows a sending to the same location by less than 90 seconds is now queued, then sent about two minutes later, grouped with the following ones. A scenario can chain commands without a pause. A 500 refusal from Škoda is shown in plain words.
+- Tile: “Cable unplugged” could show in the Charging block while the cable was plugged in, for example when the charger waits for a charging time. Škoda gives no charging state in that case, and the plugin kept the last one received. The “Charging state” command is now emptied (unknown state) when Škoda does not give it, and the tile then shows “Cable plugged in” from the cable state.
+- Tried on the Jeedom box against a fake Škoda server that refuses close sendings: queuing, grouped sending, plain refusal, dropping if the box is unticked. Not yet on a car.
+
 # 0.852 — 14/10/2026
 
 - Preferred charging times: the “charging time hours” command also accepts Jeedom's hhmm time format, for example 2200-0600, or 700-1500 when a morning time has lost its leading zero. A scenario that computes its start and end times in hhmm format can therefore send them as they are, by writing `#…start…#-#…end…#` in the message (requested by a tester who adjusts their charging times every day to the expected sunshine).

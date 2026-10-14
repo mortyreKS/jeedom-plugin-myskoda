@@ -1,6 +1,6 @@
 # Experimental features: tests to run
 
-> Page up to date for version 0.852 beta of the plugin, on 14/10/2026.
+> Page up to date for version 0.853 beta of the plugin, on 14/10/2026.
 
 An experimental feature is written from Škoda's documentation, but nobody has tried it on a vehicle yet: the plugin's author has no electric vehicle. It has been checked without a car, against a fake Škoda server: what the plugin sends, and what it refuses. What remains to be seen is what the car does. Thanks to those willing to try it.
 
@@ -29,7 +29,7 @@ Each change costs three requests from the hourly quota (reading the location, se
 2. **Change the hours of a charging time**, for example 21:00-07:00, then one that crosses midnight if it did not already (for example 23:30-05:30). Check in the app.
 3. **Check that everything else is unchanged**, comparing with the starting screenshot: charge limit, minimum charge, departure times, the other charging times of the same location, and the other charging locations.
 4. **A change during a charging session**, if the opportunity arises: does the car accept it, does charging carry on?
-5. Optional: **two changes in a row** in one scenario (two action blocks), for example enable charging time 3 then change the hours of charging time 4. Both must show in the app.
+5. Optional: **two changes in a row** in one scenario (two action blocks), for example enable charging time 3 then change the hours of charging time 4. The first is sent straight away, the second about two minutes later (the plugin log says it is queued); both must show in the app.
 6. **Change the charging mode from Jeedom** with the “Select charging mode” command: “Preferred charging times”, then “Immediate charging”. Does the app show the same choice? (That “Immediate charging” is Škoda's `MANUAL` mode has not been checked.)
 
 ### What to send back

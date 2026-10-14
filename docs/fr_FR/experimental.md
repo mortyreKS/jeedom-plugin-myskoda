@@ -1,6 +1,6 @@
 # Fonctions expérimentales : essais à faire
 
-> Page à jour pour la version 0.852 beta du plugin, le 14/10/2026.
+> Page à jour pour la version 0.853 beta du plugin, le 14/10/2026.
 
 Une fonction expérimentale est écrite d'après la documentation de Škoda, mais personne ne l'a encore essayée sur un véhicule : l'auteur du plugin n'a pas de véhicule électrique. Elle a été vérifiée sans voiture, contre un faux serveur Škoda : ce que le plugin envoie, et ses refus. Ce qui reste à voir, c'est ce que fait la voiture. Merci à ceux qui acceptent de l'essayer.
 
@@ -29,7 +29,7 @@ Chaque modification coûte trois requêtes du quota de l'heure (relecture du poi
 2. **Changer les heures d'une plage**, par exemple 21:00-07:00, puis une plage qui passe minuit dans l'autre sens si ce n'était pas le cas (par exemple 23:30-05:30). Vérifier dans l'application.
 3. **Vérifier que le reste est intact**, en comparant avec la capture du départ : limite de charge, charge minimale, heures de départ, les autres plages du même point, et les autres points de recharge.
 4. **Une modification pendant une charge**, si l'occasion se présente : la voiture accepte-t-elle, la charge continue-t-elle ?
-5. Facultatif : **deux modifications à la suite** dans un même scénario (deux blocs action), par exemple activer la plage 3 puis changer les heures de la plage 4. Les deux doivent se retrouver dans l'application.
+5. Facultatif : **deux modifications à la suite** dans un même scénario (deux blocs action), par exemple activer la plage 3 puis changer les heures de la plage 4. La première part tout de suite, la seconde environ deux minutes plus tard (le journal du plugin indique « mise en attente ») ; les deux doivent se retrouver dans l'application.
 6. **Changer de mode de charge depuis Jeedom** avec la commande « Choisir le mode de charge » : « Heures préférées », puis « Recharge immédiate ». L'application montre-t-elle le même choix ? (Que « Recharge immédiate » corresponde bien au mode `MANUAL` de Škoda n'est pas vérifié.)
 
 ### Ce qu'il faut renvoyer

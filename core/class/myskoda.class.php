@@ -43,6 +43,8 @@ class myskoda extends eqLogic {
   // Durée pendant laquelle une modification de plage envoyée est réappliquée sur le point de recharge relu, en
   // secondes : la voiture l'applique en différé, et une seconde commande ne doit pas la défaire
   const CHARGING_TIME_EDITS_MEMORY = 600;
+  // Délai minimal entre deux envois vers un même point de recharge, en secondes (voir changeChargingTime)
+  const CHARGING_PROFILE_SPACING = 90;
 
   // Commandes info : identifiant => nom, sous-type, unité, historisée, visible
   private static $_infos = array(
@@ -226,7 +228,16 @@ class myskoda extends eqLogic {
       return;
     }
     foreach (eqLogic::byType(__CLASS__, true) as $eqLogic) {
-      if ($eqLogic->getConfiguration('vin') == '' || time() < max($eqLogic->getNextRefresh(), $eqLogic->getHold())) {
+      if ($eqLogic->getConfiguration('vin') == '') {
+        continue;
+      }
+      // Modifications des heures de charge mises en attente (fonction expérimentale)
+      try {
+        $eqLogic->flushChargingTimeQueue();
+      } catch (\Throwable $e) {
+        log::add(__CLASS__, 'warning', $eqLogic->getHumanName() . ' : ' . $e->getMessage());
+      }
+      if (time() < max($eqLogic->getNextRefresh(), $eqLogic->getHold())) {
         continue;
       }
       // \Throwable : une donnée inattendue de Škoda ne doit pas empêcher la lecture des véhicules suivants
@@ -328,6 +339,12 @@ class myskoda extends eqLogic {
     $v['range'] = ($range === null) ? null : round($range / 1000, 1);
     $chargingState = self::dig($_vehicle, 'charging.status.state');
     $v['charging_state'] = $chargingState;
+    // Škoda omet l'état quand la combinaison n'a pas de nom, par exemple câble branché sans charge en cours (borne qui
+    // attend une plage horaire) : l'ancienne valeur, souvent CONNECT_CABLE (« Câble débranché »), restait affichée alors
+    // que le câble était branché (constaté chez un testeur le 2026-10-14). L'état est alors vidé : inconnu.
+    if ($chargingState === null && is_array(self::dig($_vehicle, 'charging.status'))) {
+      $v['charging_state'] = '';
+    }
     // L'état est omis par l'API quand il est indéterminé : dans ce cas « En charge » n'est pas modifiée
     if ($chargingState !== null) {
       $v['charging'] = ($chargingState == 'CHARGING') ? 1 : 0;
@@ -1295,13 +1312,19 @@ class myskoda extends eqLogic {
     }));
   }
 
-  // FONCTION EXPÉRIMENTALE, jamais essayée sur un véhicule. Active, désactive ou change les heures de la plage n° $_slot
-  // (numérotée dans l'ordre où Škoda rend les plages) du point de recharge $_profileId. $_change : array('enabled' =>
-  // true|false) ou array('startTime' => 'HH:mm', 'endTime' => 'HH:mm').
-  // Škoda applique le point de recharge envoyé en entier (spécification de l'API, opération updateChargingProfile) : il
-  // est relu juste avant (une requête), seul le champ visé est changé, puis il est renvoyé tel que reçu, champs inconnus
-  // compris, sans être reconstruit. Les modifications envoyées depuis peu, que la voiture n'a peut-être pas encore
-  // appliquées, sont réappliquées sur le point relu. Rien n'est envoyé si la plage est déjà réglée ainsi.
+  // Description d'une modification de plage pour le journal, sans nom de point de recharge
+  private static function describeChargingTimeChange($_slot, $_change) {
+    $text = isset($_change['enabled']) ? ($_change['enabled'] ? 'activée' : 'désactivée') : $_change['startTime'] . '-' . $_change['endTime'];
+    return 'plage ' . $_slot . ' : ' . $text;
+  }
+
+  // FONCTION EXPÉRIMENTALE. Active, désactive ou change les heures de la plage n° $_slot (numérotée dans l'ordre où Škoda
+  // rend les plages, qui est celui de l'application : vérifié sur un Elroq) du point de recharge $_profileId.
+  // $_change : array('enabled' => true|false) ou array('startTime' => 'HH:mm', 'endTime' => 'HH:mm').
+  // Škoda refuse, en HTTP 500, une modification d'un point de recharge envoyée juste après la précédente (constaté chez un
+  // testeur le 2026-10-14 : la seconde d'un scénario, une seconde après la première ; des modifications espacées de
+  // 88 secondes ou plus sont passées). Une demande qui arrive moins de CHARGING_PROFILE_SPACING secondes après un envoi
+  // vers ce point est donc mise en attente, puis envoyée par la tâche planifiée, regroupée avec celles qui la suivent.
   public function changeChargingTime($_profileId, $_slot, $_change) {
     self::checkExperimental();
     // Numéro de plage contrôlé avant toute requête ; qu'il existe ne se sait qu'après la relecture
@@ -1312,6 +1335,72 @@ class myskoda extends eqLogic {
     if (time() < $this->getHold()) {
       throw new Exception(sprintf(__('Škoda demande d\'attendre jusqu\'à %s avant une nouvelle demande', __FILE__), date('H:i', $this->getHold())));
     }
+    $due = $this->chargingProfileDue($_profileId);
+    if ($due > time()) {
+      // Contrôle de la plage d'après la dernière lecture, pour refuser tout de suite une plage qui n'existe pas
+      foreach ($this->getCache('chargingProfiles', array()) as $cached) {
+        if (isset($cached['id'], $cached['slots']) && (string) $cached['id'] === (string) $_profileId && is_array($cached['slots']) && $slot > count($cached['slots'])) {
+          throw new Exception(sprintf(__('La plage %s n\'existe pas : ce point de recharge a des plages numérotées de 1 à %s', __FILE__), $_slot, count($cached['slots'])));
+        }
+      }
+      $queue = $this->getCache('chargingTimeQueue', array());
+      $queue = is_array($queue) ? $queue : array();
+      $queue[] = array('profile' => (string) $_profileId, 'slot' => $slot, 'change' => $_change, 'at' => time());
+      $this->setCache('chargingTimeQueue', $queue);
+      log::add(__CLASS__, 'info', $this->getHumanName() . ' : point de recharge ' . $_profileId . ', ' . self::describeChargingTimeChange($slot, $_change)
+        . ' (mise en attente : une modification de ce point vient d\'être envoyée ; envoi vers ' . date('H:i', $due + 60) . ')');
+      return;
+    }
+    $this->sendChargingProfile($_profileId, array(array('slot' => $slot, 'change' => $_change)));
+  }
+
+  // Heure à partir de laquelle une nouvelle modification du point de recharge peut être envoyée à Škoda
+  private function chargingProfileDue($_profileId) {
+    $sent = $this->getCache('chargingProfileSentAt', array());
+    $last = (is_array($sent) && isset($sent[(string) $_profileId])) ? (int) $sent[(string) $_profileId] : 0;
+    return $last + self::CHARGING_PROFILE_SPACING;
+  }
+
+  // Envoie les demandes en attente dont le délai est passé (appelée chaque minute par la tâche planifiée). Une demande qui
+  // échoue à ce moment-là est signalée dans le centre de messages : la commande, elle, avait déjà rendu la main.
+  public function flushChargingTimeQueue() {
+    $queue = $this->getCache('chargingTimeQueue', array());
+    if (!is_array($queue) || count($queue) == 0) {
+      return;
+    }
+    if (!self::experimentalEnabled()) {
+      $this->setCache('chargingTimeQueue', array());
+      log::add(__CLASS__, 'info', $this->getHumanName() . ' : modifications de plages en attente abandonnées (fonctions expérimentales désactivées)');
+      return;
+    }
+    if (time() < $this->getHold()) {
+      return;
+    }
+    $byProfile = array();
+    foreach ($queue as $request) {
+      $byProfile[(string) $request['profile']][] = $request;
+    }
+    $left = array();
+    foreach ($byProfile as $profileId => $requests) {
+      if ($this->chargingProfileDue($profileId) > time()) {
+        $left = array_merge($left, $requests);
+        continue;
+      }
+      try {
+        $this->sendChargingProfile($profileId, $requests);
+      } catch (\Throwable $e) {
+        log::add(__CLASS__, 'warning', $this->getHumanName() . ' : ' . $e->getMessage());
+        message::add(__CLASS__, $this->getHumanName() . ' : ' . __('Une modification des heures de charge mise en attente n\'a pas pu être envoyée', __FILE__) . ' : ' . $e->getMessage());
+      }
+    }
+    $this->setCache('chargingTimeQueue', $left);
+  }
+
+  // Relit le point de recharge (une requête), y réapplique les modifications envoyées depuis peu, que la voiture n'a
+  // peut-être pas encore appliquées, puis les demandes $_requests (plage et changement), et le renvoie en entier, tel que
+  // reçu, champs inconnus compris : Škoda applique le point envoyé en entier (spécification, updateChargingProfile).
+  // Rien n'est envoyé si les plages sont déjà réglées ainsi.
+  private function sendChargingProfile($_profileId, $_requests) {
     $api = $this->getApi();
     try {
       $response = $api->getVehicle($this->getConfiguration('vin'), array('chargingProfiles'), false);
@@ -1339,8 +1428,13 @@ class myskoda extends eqLogic {
     if (count($slots) == 0) {
       throw new Exception(__('Ce point de recharge n\'a aucune plage de charge', __FILE__));
     }
-    if ($slot > count($slots)) {
-      throw new Exception(sprintf(__('La plage %s n\'existe pas : ce point de recharge a des plages numérotées de 1 à %s', __FILE__), $_slot, count($slots)));
+    foreach ($_requests as $request) {
+      if ($request['slot'] > count($slots)) {
+        throw new Exception(sprintf(__('La plage %s n\'existe pas : ce point de recharge a des plages numérotées de 1 à %s', __FILE__), $request['slot'], count($slots)));
+      }
+      if (!is_object($slots[$request['slot'] - 1]) || !isset($slots[$request['slot'] - 1]->id)) {
+        throw new Exception(__('Plage illisible dans la réponse de Škoda', __FILE__));
+      }
     }
     $apply = function ($_timeId, $_values) use ($slots) {
       foreach ($slots as $time) {
@@ -1356,34 +1450,36 @@ class myskoda extends eqLogic {
         $apply($edit['time'], $edit['change']);
       }
     }
-    $target = $slots[$slot - 1];
-    if (!is_object($target) || !isset($target->id)) {
-      throw new Exception(__('Plage illisible dans la réponse de Škoda', __FILE__));
-    }
     $pending = json_encode($profile);
-    $apply($target->id, $_change);
-    if (isset($_change['enabled'])) {
-      $description = $_change['enabled'] ? 'activée' : 'désactivée';
-    } else {
-      $description = $_change['startTime'] . '-' . $_change['endTime'];
+    $done = array();
+    $parts = array();
+    foreach ($_requests as $request) {
+      $timeId = $slots[$request['slot'] - 1]->id;
+      $apply($timeId, $request['change']);
+      $done[] = array('profile' => (string) $profile->id, 'time' => (string) $timeId, 'change' => $request['change'], 'at' => time());
+      $parts[] = self::describeChargingTimeChange($request['slot'], $request['change']);
     }
-    $description = 'point de recharge ' . $profile->id . ', plage ' . $slot . ' : ' . $description;
+    $description = 'point de recharge ' . $profile->id . ', ' . implode(', ', $parts);
     if (json_encode($profile) === $pending) {
-      log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . $description . ' (déjà réglée ainsi, rien n\'est envoyé)');
+      log::add(__CLASS__, 'info', $this->getHumanName() . ' : ' . $description . ' (déjà réglé ainsi, rien n\'est envoyé)');
       return;
     }
     // Journal : le point de recharge envoyé, sans son nom (souvent celui d'un lieu)
     $logged = json_decode(json_encode($profile), true);
     $logged['name'] = '***';
     log::add(__CLASS__, 'debug', $this->getHumanName() . ' : point de recharge envoyé : ' . json_encode($logged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    // L'heure d'envoi est notée avant la réponse : même refusée, une demande compte pour l'espacement
+    $sent = $this->getCache('chargingProfileSentAt', array());
+    $sent = is_array($sent) ? $sent : array();
+    $sent[(string) $profile->id] = time();
+    $this->setCache('chargingProfileSentAt', $sent);
     $this->sendCommand('PUT', 'charging-profiles/' . rawurlencode((string) $profile->id), $profile, $description, array(
       400 => __('Škoda a refusé le réglage envoyé', __FILE__),
       404 => __('Škoda ne connaît pas ce point de recharge : il a peut-être été supprimé dans l\'application MyŠkoda', __FILE__),
       412 => __('Le point de recharge envoyé ne correspond pas à celui demandé : relancer la commande', __FILE__),
+      500 => __('Škoda n\'a pas accepté la modification, peut-être parce que la précédente est encore en cours d\'application : réessayer dans deux minutes', __FILE__),
     ));
-    $edits = $this->recentChargingTimeEdits();
-    $edits[] = array('profile' => (string) $profile->id, 'time' => (string) $target->id, 'change' => $_change, 'at' => time());
-    $this->setCache('chargingTimeEdits', $edits);
+    $this->setCache('chargingTimeEdits', array_merge($this->recentChargingTimeEdits(), $done));
   }
 
   private static function buildChargeModeList($_modes) {
@@ -2739,8 +2835,12 @@ class myskoda extends eqLogic {
     if ($state !== null || isset($action['charge_start']) || isset($action['charge_stop'])) {
       $charging = ($get('charging') == 1);
       $details = array();
-      if ($state !== null && !$charging) {
+      // État vide (la tuile ne reçoit pas les valeurs vides) : Škoda ne l'a pas nommé ; l'état du câble, donné à part, dit
+      // alors s'il est branché
+      if ($state !== null && $state !== '' && !$charging) {
         $details[] = isset(self::$_chargingStateLabels[$state]) ? __(self::$_chargingStateLabels[$state], __FILE__) : htmlspecialchars($state);
+      } elseif ($state === null && !$charging && $get('plug_connected') == 1) {
+        $details[] = __('Câble branché', __FILE__);
       }
       if ($charging) {
         if ($get('charge_power') !== null) {
@@ -2975,8 +3075,12 @@ class myskoda extends eqLogic {
 
     $charge = '';
     $state = $get('charging_state');
-    if ($state !== null) {
+    // État vide (la tuile ne reçoit pas les valeurs vides) : Škoda ne l'a pas nommé ; l'état du câble, donné à part, dit
+    // alors s'il est branché
+    if ($state !== null && $state !== '') {
       $charge .= self::tileRow(__('État', __FILE__), isset(self::$_chargingStateLabels[$state]) ? __(self::$_chargingStateLabels[$state], __FILE__) : htmlspecialchars($state));
+    } elseif ($state === null && $get('plug_connected') == 1) {
+      $charge .= self::tileRow(__('État', __FILE__), __('Câble branché', __FILE__));
     }
     if ($get('charging') == 1) {
       if ($get('charge_power') !== null) {

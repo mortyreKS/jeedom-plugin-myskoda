@@ -9,6 +9,10 @@ The detailed history of the earlier beta versions is in the [French changelog](.
 # 0.88 — 15/10/2026
 
 - Top of the logbook redesigned: one button per vehicle, with its name only (without the object), a coloured dot, its state and its battery or fuel level, read again every minute in Jeedom without any request to Škoda; underlined tabs with an icon; “Devices” and “Configuration” shortcuts as plain text on the right; a hybrid's “Electric view” and “Fuel view” as two joined segments. On a phone, vehicles and tabs scroll on one line. No setting or data changes.
+- **Security** (external review): the Škoda API key, the S-PIN code and the stored places stay encrypted in Jeedom and are only decrypted by the plugin when it uses them. Until now, Jeedom returned them in clear to any logged-in account that asked, including a restricted one (a wall tablet, for instance). Nothing to redo: the key and code already entered remain valid, and places are encrypted at their next update. In the input fields, the key and code are masked as before.
+- Charging hours (experimental feature): a change made while others are still waiting to be sent to the same charging location now queues behind them; before, it could be sent alone and then overwritten by an older request. A request arriving while the scheduled task is sending is no longer lost, and two sends no longer leave a few seconds apart.
+- Off-peak hours: with a numeric command (0 or 1), charging sessions longer than two hours counted 0 % off-peak once Jeedom had archived the history, keeping only an hourly average. That average is now taken as the off-peak share: costs already shown may therefore change, this time to become right.
+- Logbook: the Vehicle tab stayed empty when the “widget template” option was unticked on the device (fault introduced in 0.86).
 
 # 0.871 — 14/10/2026
 

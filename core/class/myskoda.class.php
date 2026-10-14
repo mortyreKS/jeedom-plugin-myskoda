@@ -24,7 +24,25 @@ require_once __DIR__  . '/myskodaDiagnostic.class.php';
 class myskoda extends eqLogic {
   /*     * *************************Attributs****************************** */
 
-  public static $_encryptConfigKey = array('apikey', 'spin');
+  // La clé API et l'ancien S-PIN général ne sont pas confiés au chiffrement automatique du core
+  // ($_encryptConfigKey) : le core les déchiffrerait pour toute demande « getKey » de config.ajax.php, qu'il accepte de
+  // n'importe quel compte connecté, même restreint. Ils sont donc chiffrés par le plugin (preConfig_apikey,
+  // preConfig_spin) et ne sont déchiffrés qu'au moment de s'adresser à Škoda (apiKey).
+
+  public static function preConfig_apikey($_value) {
+    $value = trim((string) $_value);
+    return ($value === '') ? '' : utils::encrypt($value);
+  }
+
+  public static function preConfig_spin($_value) {
+    $value = trim((string) $_value);
+    return ($value === '') ? '' : utils::encrypt($value);
+  }
+
+  // Clé API en clair ; une clé enregistrée avant ce chiffrement l'a été par le core, sous la même forme « crypt: »
+  public static function apiKey() {
+    return trim((string) utils::decrypt(config::byKey('apikey', __CLASS__)));
+  }
 
   // Intervalle de lecture par défaut et minimal, en minutes (quota de l'API : 20 requêtes par heure et par véhicule)
   const DEFAULT_INTERVAL = 10;
@@ -177,7 +195,7 @@ class myskoda extends eqLogic {
     if (is_object(eqLogic::byLogicalId($vin, __CLASS__))) {
       throw new Exception(__('Ce véhicule est déjà ajouté', __FILE__));
     }
-    $key = config::byKey('apikey', __CLASS__);
+    $key = self::apiKey();
     if ($key == '') {
       throw new Exception(__('La clé API n\'est pas renseignée dans la configuration du plugin', __FILE__));
     }
@@ -577,7 +595,7 @@ class myskoda extends eqLogic {
   }
 
   private function getApi() {
-    $apiKey = config::byKey('apikey', __CLASS__);
+    $apiKey = self::apiKey();
     if ($apiKey == '') {
       throw new Exception(__('La clé API n\'est pas renseignée dans la configuration du plugin', __FILE__));
     }
@@ -1335,57 +1353,130 @@ class myskoda extends eqLogic {
     if (time() < $this->getHold()) {
       throw new Exception(sprintf(__('Škoda demande d\'attendre jusqu\'à %s avant une nouvelle demande', __FILE__), date('H:i', $this->getHold())));
     }
-    $due = $this->chargingProfileDue($_profileId);
-    if ($due > time()) {
-      // Contrôle de la plage d'après la dernière lecture, pour refuser tout de suite une plage qui n'existe pas
-      foreach ($this->getCache('chargingProfiles', array()) as $cached) {
-        if (isset($cached['id'], $cached['slots']) && (string) $cached['id'] === (string) $_profileId && is_array($cached['slots']) && $slot > count($cached['slots'])) {
-          throw new Exception(sprintf(__('La plage %s n\'existe pas : ce point de recharge a des plages numérotées de 1 à %s', __FILE__), $_slot, count($cached['slots'])));
-        }
+    // Contrôle de la plage d'après la dernière lecture, pour refuser tout de suite une plage qui n'existe pas
+    foreach ($this->getCache('chargingProfiles', array()) as $cached) {
+      if (isset($cached['id'], $cached['slots']) && (string) $cached['id'] === (string) $_profileId && is_array($cached['slots']) && $slot > count($cached['slots'])) {
+        throw new Exception(sprintf(__('La plage %s n\'existe pas : ce point de recharge a des plages numérotées de 1 à %s', __FILE__), $_slot, count($cached['slots'])));
       }
-      $queue = $this->getCache('chargingTimeQueue', array());
-      $queue = is_array($queue) ? $queue : array();
+    }
+    // Sous verrou : un scénario et la tâche planifiée peuvent agir au même moment sur ce véhicule. La demande est mise à
+    // la suite de la file si le délai n'est pas écoulé, ou si d'autres demandes vers ce point attendent encore : elle
+    // partira avec elles, après elles, et ne sera jamais écrasée par une demande plus ancienne. Sinon, l'envoi est
+    // réservé (heure notée) avant de relâcher le verrou, pour qu'aucun autre processus n'envoie dans la foulée.
+    $due = 0;
+    $queued = $this->withChargingLock(function () use ($_profileId, $slot, $_change, &$due) {
+      $queue = $this->getChargingQueue();
+      $waiting = false;
+      foreach ($queue as $request) {
+        $waiting = $waiting || ((string) $request['profile'] === (string) $_profileId);
+      }
+      $due = $this->chargingProfileDue($_profileId);
+      if ($due <= time() && !$waiting) {
+        $this->markChargingProfileSent($_profileId);
+        return false;
+      }
       $queue[] = array('profile' => (string) $_profileId, 'slot' => $slot, 'change' => $_change, 'at' => time());
-      $this->setCache('chargingTimeQueue', $queue);
+      $this->setChargingQueue($queue);
+      return true;
+    });
+    if ($queued) {
       log::add(__CLASS__, 'info', $this->getHumanName() . ' : point de recharge ' . $_profileId . ', ' . self::describeChargingTimeChange($slot, $_change)
-        . ' (mise en attente : une modification de ce point vient d\'être envoyée ; envoi vers ' . date('H:i', $due + 60) . ')');
+        . ' (mise en attente : une modification de ce point vient d\'être envoyée ou attend déjà ; envoi vers ' . date('H:i', max($due, time()) + 60) . ')');
       return;
     }
     $this->sendChargingProfile($_profileId, array(array('slot' => $slot, 'change' => $_change)));
   }
 
+  // File des modifications en attente et heures des derniers envois : chacune dans sa propre entrée du cache, et non
+  // dans le cache de l'équipement, que le core réécrit en entier à chaque setCache (une lecture faite au même moment
+  // par la tâche planifiée effacerait sinon une demande à peine notée)
+  private function getChargingQueue() {
+    $queue = cache::byKey(__CLASS__ . '::chargingTimeQueue::' . $this->getId())->getValue(array());
+    $queue = is_array($queue) ? $queue : array();
+    // File notée par une version précédente, dans le cache de l'équipement
+    $old = $this->getCache('chargingTimeQueue', array());
+    if (is_array($old) && count($old) > 0) {
+      $queue = array_merge($old, $queue);
+      $this->setCache('chargingTimeQueue', null);
+      $this->setChargingQueue($queue);
+    }
+    return $queue;
+  }
+
+  private function setChargingQueue($_queue) {
+    cache::set(__CLASS__ . '::chargingTimeQueue::' . $this->getId(), array_values($_queue));
+  }
+
+  private function getChargingSentAt() {
+    $sent = cache::byKey(__CLASS__ . '::chargingProfileSentAt::' . $this->getId())->getValue(array());
+    return is_array($sent) ? $sent : array();
+  }
+
+  private function markChargingProfileSent($_profileId) {
+    $sent = $this->getChargingSentAt();
+    $sent[(string) $_profileId] = time();
+    cache::set(__CLASS__ . '::chargingProfileSentAt::' . $this->getId(), $sent);
+  }
+
+  // Exécute $_function sous un verrou propre à ce véhicule (fichier du dossier temporaire du plugin). Le verrou ne couvre
+  // que la file et l'heure des envois, jamais une requête à Škoda : il n'est tenu qu'un instant.
+  private function withChargingLock($_function) {
+    $handle = @fopen(jeedom::getTmpFolder(__CLASS__) . '/chargingProfile_' . $this->getId() . '.lock', 'c');
+    if ($handle === false) {
+      return $_function();
+    }
+    flock($handle, LOCK_EX);
+    try {
+      return $_function();
+    } finally {
+      flock($handle, LOCK_UN);
+      fclose($handle);
+    }
+  }
+
   // Heure à partir de laquelle une nouvelle modification du point de recharge peut être envoyée à Škoda
   private function chargingProfileDue($_profileId) {
-    $sent = $this->getCache('chargingProfileSentAt', array());
-    $last = (is_array($sent) && isset($sent[(string) $_profileId])) ? (int) $sent[(string) $_profileId] : 0;
+    $sent = $this->getChargingSentAt();
+    $last = isset($sent[(string) $_profileId]) ? (int) $sent[(string) $_profileId] : 0;
     return $last + self::CHARGING_PROFILE_SPACING;
   }
 
   // Envoie les demandes en attente dont le délai est passé (appelée chaque minute par la tâche planifiée). Une demande qui
   // échoue à ce moment-là est signalée dans le centre de messages : la commande, elle, avait déjà rendu la main.
   public function flushChargingTimeQueue() {
-    $queue = $this->getCache('chargingTimeQueue', array());
-    if (!is_array($queue) || count($queue) == 0) {
+    if (count($this->getChargingQueue()) == 0) {
       return;
     }
     if (!self::experimentalEnabled()) {
-      $this->setCache('chargingTimeQueue', array());
+      $this->withChargingLock(function () {
+        $this->setChargingQueue(array());
+      });
       log::add(__CLASS__, 'info', $this->getHumanName() . ' : modifications de plages en attente abandonnées (fonctions expérimentales désactivées)');
       return;
     }
     if (time() < $this->getHold()) {
       return;
     }
-    $byProfile = array();
-    foreach ($queue as $request) {
-      $byProfile[(string) $request['profile']][] = $request;
-    }
-    $left = array();
-    foreach ($byProfile as $profileId => $requests) {
-      if ($this->chargingProfileDue($profileId) > time()) {
-        $left = array_merge($left, $requests);
-        continue;
+    // Sous verrou, les demandes à envoyer sont retirées de la file et leur envoi réservé ; une demande arrivée pendant
+    // les requêtes à Škoda s'ajoute à la file restante et partira à la minute suivante
+    $byProfile = $this->withChargingLock(function () {
+      $ready = array();
+      $left = array();
+      foreach ($this->getChargingQueue() as $request) {
+        $profileId = (string) $request['profile'];
+        if (isset($ready[$profileId]) || $this->chargingProfileDue($profileId) <= time()) {
+          $ready[$profileId][] = $request;
+        } else {
+          $left[] = $request;
+        }
       }
+      foreach (array_keys($ready) as $profileId) {
+        $this->markChargingProfileSent($profileId);
+      }
+      $this->setChargingQueue($left);
+      return $ready;
+    });
+    foreach ($byProfile as $profileId => $requests) {
       try {
         $this->sendChargingProfile($profileId, $requests);
       } catch (\Throwable $e) {
@@ -1393,7 +1484,6 @@ class myskoda extends eqLogic {
         message::add(__CLASS__, $this->getHumanName() . ' : ' . __('Une modification des heures de charge mise en attente n\'a pas pu être envoyée', __FILE__) . ' : ' . $e->getMessage());
       }
     }
-    $this->setCache('chargingTimeQueue', $left);
   }
 
   // Relit le point de recharge (une requête), y réapplique les modifications envoyées depuis peu, que la voiture n'a
@@ -1468,11 +1558,11 @@ class myskoda extends eqLogic {
     $logged = json_decode(json_encode($profile), true);
     $logged['name'] = '***';
     log::add(__CLASS__, 'debug', $this->getHumanName() . ' : point de recharge envoyé : ' . json_encode($logged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    // L'heure d'envoi est notée avant la réponse : même refusée, une demande compte pour l'espacement
-    $sent = $this->getCache('chargingProfileSentAt', array());
-    $sent = is_array($sent) ? $sent : array();
-    $sent[(string) $profile->id] = time();
-    $this->setCache('chargingProfileSentAt', $sent);
+    // L'heure d'envoi est notée de nouveau juste avant l'envoi (elle l'a été une première fois avant la relecture) :
+    // même refusée, une demande compte pour l'espacement
+    $this->withChargingLock(function () use ($profile) {
+      $this->markChargingProfileSent($profile->id);
+    });
     $this->sendCommand('PUT', 'charging-profiles/' . rawurlencode((string) $profile->id), $profile, $description, array(
       400 => __('Škoda a refusé le réglage envoyé', __FILE__),
       404 => __('Škoda ne connaît pas ce point de recharge : il a peut-être été supprimé dans l\'application MyŠkoda', __FILE__),
@@ -1511,6 +1601,11 @@ class myskoda extends eqLogic {
     }
     $items = array();
     foreach ($_modes as $mode) {
+      // Un mode inconnu du plugin est affiché tel que Škoda le nomme : seuls des noms de la forme de l'API
+      // (MANUAL, PREFERRED_CHARGING_TIMES…) sont repris, le libellé finissant dans le HTML d'une confirmation
+      if (!is_string($mode) || !preg_match('/^[A-Z0-9_]{1,40}$/', $mode)) {
+        continue;
+      }
       $items[] = $mode . '|' . (isset(self::$_chargeModeLabels[$mode]) ? __(self::$_chargeModeLabels[$mode], __FILE__) : $mode);
     }
     return implode(';', $items);
@@ -1575,12 +1670,10 @@ class myskoda extends eqLogic {
     $this->refreshWidget();
   }
 
-  // Le code S-PIN d'un véhicule est enregistré chiffré, comme le veut le core pour un réglage d'équipement :
-  // ces deux méthodes sont appelées par le core à chaque lecture et à chaque écriture de l'équipement en base.
-  public function decrypt() {
-    $this->setConfiguration('spin', utils::decrypt($this->getConfiguration('spin')));
-  }
-
+  // Le code S-PIN d'un véhicule est enregistré chiffré : le core appelle encrypt() à chaque écriture de l'équipement.
+  // Il n'y a volontairement pas de decrypt() : le core l'appellerait à chaque lecture de l'équipement, et le code
+  // partirait alors en clair dans les réponses de eqLogic.ajax.php, que le core rend à tout compte connecté. Le code
+  // reste chiffré en mémoire et n'est déchiffré qu'au moment de l'envoyer (startAuxiliaryHeating).
   public function encrypt() {
     $this->setConfiguration('spin', utils::encrypt($this->getConfiguration('spin')));
   }
@@ -1589,9 +1682,9 @@ class myskoda extends eqLogic {
   // véhicule et à son utilisateur principal (il se redéfinit dans la voiture, avec ses deux clés) : il se saisit donc
   // sur l'équipement. Un code saisi autrefois dans la configuration générale du plugin sert encore à défaut.
   public function startAuxiliaryHeating() {
-    $spin = trim((string) $this->getConfiguration('spin'));
+    $spin = trim((string) utils::decrypt($this->getConfiguration('spin')));
     if ($spin == '') {
-      $spin = trim((string) config::byKey('spin', __CLASS__));
+      $spin = trim((string) utils::decrypt(config::byKey('spin', __CLASS__)));
     }
     if ($spin == '') {
       throw new Exception(__('Le chauffage auxiliaire demande le code S-PIN du véhicule : le saisir sur la page de l\'équipement', __FILE__));
@@ -1630,12 +1723,19 @@ class myskoda extends eqLogic {
     return 'places::' . $this->getId();
   }
 
+  // Les lieux sont chiffrés : le core rend la configuration d'un plugin à tout compte connecté qui la demande
+  // (config.ajax.php, action getKey), et ils contiennent les adresses où la voiture stationne
+  private function storePlaces($_places) {
+    config::save($this->placesKey(), utils::encrypt(json_encode($_places, JSON_UNESCAPED_UNICODE)), __CLASS__);
+  }
+
   // Lieux de stationnement connus : liste de (lat, lng, address). L'API ne donne l'adresse que du stationnement en cours,
   // et Jeedom n'historise pas les textes : le plugin garde donc lui-même l'adresse de chaque lieu rencontré.
   public function getPlaces() {
     $places = config::byKey($this->placesKey(), __CLASS__, array());
     if (is_string($places)) {
-      $places = json_decode($places, true);
+      // Enregistrés chiffrés depuis la 0.88 (storePlaces) ; une liste plus ancienne est encore en clair
+      $places = json_decode((string) utils::decrypt($places), true);
     }
     return is_array($places) ? $places : array();
   }
@@ -1707,7 +1807,7 @@ class myskoda extends eqLogic {
     } else {
       $places[] = array('lat' => (float) $_lat, 'lng' => (float) $_lng, 'address' => $_address);
     }
-    config::save($this->placesKey(), json_encode(self::capPlaces($places), JSON_UNESCAPED_UNICODE), __CLASS__);
+    $this->storePlaces(self::capPlaces($places));
   }
 
   // Libellé d'une position : nom donné au lieu par l'utilisateur, à défaut son adresse, à défaut l'adresse ou les coordonnées fournies
@@ -1750,20 +1850,34 @@ class myskoda extends eqLogic {
     if ($text == '' || self::offPeakPrice() <= 0) {
       return null;
     }
-    try {
-      return cmd::byString($text);
-    } catch (Exception $e) {
-      return null;
+    // Gardée le temps de la page : le journal la demande pour chaque recharge
+    if (!array_key_exists($text, self::$_offPeakCmds)) {
+      try {
+        self::$_offPeakCmds[$text] = cmd::byString($text);
+      } catch (Exception $e) {
+        self::$_offPeakCmds[$text] = null;
+      }
     }
+    return self::$_offPeakCmds[$text];
   }
+
+  private static $_offPeakCmds = array();
 
   public static function offPeakPrice() {
     return (float) str_replace(',', '.', config::byKey('offpeak_price', __CLASS__, 0));
   }
 
-  private static function isOffPeakValue($_value) {
+  // Part d'heures creuses que dit une valeur de la commande : 1 ou 0 en général. Une commande numérique dont l'historique
+  // a été archivé par Jeedom (au-delà de 2 heures par défaut) n'a plus qu'une moyenne par heure, écrite « 1.00 » ou
+  // « 0.50 » : cette moyenne est justement la part de l'heure passée en heures creuses. Un texte compte pour 1 s'il
+  // contient « HC » ou « creuse ».
+  private static function offPeakWeight($_value) {
     $text = strtolower(trim((string) $_value));
-    return $text === '1' || strpos($text, 'hc') !== false || strpos($text, 'creuse') !== false;
+    if (is_numeric($text)) {
+      $value = (float) $text;
+      return ($value > 0 && $value <= 1) ? $value : 0.0;
+    }
+    return (strpos($text, 'hc') !== false || strpos($text, 'creuse') !== false) ? 1.0 : 0.0;
   }
 
   // Part de l'énergie d'une recharge prise en heures creuses : chaque hausse du niveau de batterie est répartie entre
@@ -1801,20 +1915,16 @@ class myskoda extends eqLogic {
     if (!is_object($first)) {
       return null;
     }
-    $state = self::isOffPeakValue($first->getValue());
+    $weight = self::offPeakWeight($first->getValue());
     $cursor = $_from;
     $inOffPeak = 0;
     foreach (history::all($_cmd->getId(), date('Y-m-d H:i:s', $_from + 1), date('Y-m-d H:i:s', $_to)) as $change) {
       $time = strtotime($change->getDatetime());
-      if ($state) {
-        $inOffPeak += $time - $cursor;
-      }
+      $inOffPeak += ($time - $cursor) * $weight;
       $cursor = $time;
-      $state = self::isOffPeakValue($change->getValue());
+      $weight = self::offPeakWeight($change->getValue());
     }
-    if ($state) {
-      $inOffPeak += $_to - $cursor;
-    }
+    $inOffPeak += ($_to - $cursor) * $weight;
     return $inOffPeak / ($_to - $_from);
   }
 
@@ -2129,7 +2239,7 @@ class myskoda extends eqLogic {
         unset($_places[$index]);
       }
     }
-    config::save($this->placesKey(), json_encode(self::capPlaces($_places), JSON_UNESCAPED_UNICODE), __CLASS__);
+    $this->storePlaces(self::capPlaces($_places));
     $lat = $this->getCmd('info', 'latitude');
     $lng = $this->getCmd('info', 'longitude');
     if (is_object($lat) && is_object($lng) && is_numeric($lat->execCmd()) && is_numeric($lng->execCmd())) {
@@ -2719,12 +2829,13 @@ class myskoda extends eqLogic {
   }
 
   public function toHtml($_version = 'dashboard') {
-    if ($this->getDisplay('widgetTmpl', 1) == 0) {
-      return parent::toHtml($_version);
-    }
+    // Le préfixe du journal de bord est retiré avant tout : le core ne connaît que « dashboard » et « mobile »
     $journal = (strpos((string) $_version, self::JOURNAL_VERSION_PREFIX) === 0);
     if ($journal) {
       $_version = substr($_version, strlen(self::JOURNAL_VERSION_PREFIX));
+    }
+    if ($this->getDisplay('widgetTmpl', 1) == 0) {
+      return parent::toHtml($_version);
     }
     $replace = $this->preToHtml($_version);
     if (!is_array($replace)) {

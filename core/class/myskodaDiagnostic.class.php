@@ -246,7 +246,7 @@ class myskodaDiagnostic {
       $_text = str_ireplace($_search, $_by, $_text, $count);
       $replaced += $count;
     };
-    $swap(config::byKey('apikey', 'myskoda'), '[clé]');
+    $swap(myskoda::apiKey(), '[clé]');
     $rank = 0;
     foreach ($_eqLogics as $eqLogic) {
       $rank++;

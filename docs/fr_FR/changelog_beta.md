@@ -7,6 +7,10 @@
 # 0.88 — 15/10/2026
 
 - Haut du journal de bord refait : un bouton par véhicule, avec son nom seul (sans l'objet), un point de couleur, son état et le niveau de sa batterie ou de son carburant, relus chaque minute dans Jeedom sans requête vers Škoda ; onglets soulignés, avec une icône ; raccourcis « Équipements » et « Configuration » en texte simple à droite ; « Vue électrique » et « Vue carburant » d'un hybride en deux segments accolés. Sur téléphone, véhicules et onglets défilent sur une ligne. Aucun réglage ni aucune donnée ne change.
+- **Sécurité** (relecture externe) : la clé API Škoda, le code S-PIN et les lieux mémorisés restent chiffrés dans Jeedom, et le plugin ne les déchiffre qu'au moment de s'en servir. Jusqu'ici, Jeedom les rendait en clair à tout compte connecté qui les demandait, y compris un compte restreint (celui d'une tablette murale, par exemple). Rien à refaire : la clé et le code déjà saisis restent valables, et les lieux sont chiffrés à leur prochaine mise à jour. Dans les champs de saisie, la clé et le code s'affichent masqués comme avant.
+- Heures de charge (fonction expérimentale) : une modification faite pendant que d'autres attendent encore leur envoi vers le même point de recharge passe désormais derrière elles ; avant, elle pouvait partir seule, puis être écrasée par une demande plus ancienne. Une demande arrivée pendant un envoi de la tâche planifiée n'est plus perdue, et deux envois ne partent plus à quelques secondes d'écart.
+- Heures creuses : avec une commande numérique (0 ou 1), les recharges de plus de deux heures comptaient 0 % d'heures creuses une fois l'historique archivé par Jeedom, qui n'en garde alors qu'une moyenne par heure. Cette moyenne est désormais prise comme part d'heures creuses : les coûts déjà affichés peuvent donc changer, cette fois pour devenir justes.
+- Journal de bord : l'onglet Véhicule restait vide quand l'option « modèle de widget » était décochée sur l'équipement (défaut apparu en 0.86).
 
 # 0.871 — 14/10/2026
 

@@ -58,10 +58,12 @@ class myskodaApi {
   private $baseUrl;
   private $lastHeaders = array();
 
-  // $_baseUrl ne sert qu'aux essais du développeur, contre un faux serveur Škoda installé sur la box
+  // $_baseUrl ne sert qu'aux essais du développeur, contre un faux serveur Škoda installé sur la box : seule une adresse
+  // de la box elle-même est acceptée, pour que la clé, envoyée à chaque demande, ne puisse jamais partir ailleurs
   public function __construct($_apiKey, $_baseUrl = '') {
     $this->apiKey = trim($_apiKey);
-    $this->baseUrl = (trim((string) $_baseUrl) != '') ? rtrim(trim($_baseUrl), '/') : self::BASE_URL;
+    $baseUrl = trim((string) $_baseUrl);
+    $this->baseUrl = preg_match('#^http://(127\.0\.0\.1|localhost)(:[0-9]{1,5})?/#', $baseUrl . '/') ? rtrim($baseUrl, '/') : self::BASE_URL;
   }
 
   // État complet du véhicule ; $_include limite la réponse aux parties demandées. Avec $_assoc à false, la réponse est
@@ -91,6 +93,7 @@ class myskodaApi {
     $headers = array('X-API-Key: ' . $this->apiKey, 'Accept: application/json');
     $ch = curl_init($this->baseUrl . $_path);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_method);
+    curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
     curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT);

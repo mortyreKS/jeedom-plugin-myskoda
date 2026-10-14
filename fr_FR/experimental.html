@@ -20,7 +20,7 @@ li { margin: 4px 0; }
 <h1>Fonctions expérimentales : essais à faire</h1>
 <a href="index.html">Documentation</a><a href="changelog_beta.html">Journal des versions (beta)</a>
 </header>
-<blockquote><p>Page à jour pour la version 0.85 beta du plugin, le 14/10/2026.</p></blockquote>
+<blockquote><p>Page à jour pour la version 0.851 beta du plugin, le 14/10/2026.</p></blockquote>
 <p>Une fonction expérimentale est écrite d'après la documentation de Škoda, mais personne ne l'a encore essayée sur un véhicule : l'auteur du plugin n'a pas de véhicule électrique. Elle a été vérifiée sans voiture, contre un faux serveur Škoda : ce que le plugin envoie, et ses refus. Ce qui reste à voir, c'est ce que fait la voiture. Merci à ceux qui acceptent de l'essayer.</p>
 <p>Pour l'activer : configuration du plugin (Plugins → Gestion des plugins → MySkoda), rubrique « Fonctions expérimentales », cocher « Activer les fonctions expérimentales », puis Sauvegarder. Décochée, les commandes déjà créées restent en place mais sont refusées.</p>
 <h2>Heures de charge préférées (version 0.85)</h2>
@@ -31,7 +31,8 @@ li { margin: 4px 0; }
 <li>Passer le log du plugin en Debug : configuration du plugin, cadre « Logs et surveillance », cocher « Debug », Sauvegarder.</li>
 <li>Sur la page du véhicule, cliquer « Rafraîchir » (ou attendre la lecture suivante, au plus 10 minutes) : les commandes apparaissent dans l'onglet « Commandes ». Leur nom commence par celui du point de recharge, par exemple « Maison - activer une plage ». Elles sont masquées sur la tuile : on s'en sert dans un scénario.</li>
 <li>Faire une capture de l'écran « Points de recharge » de l'application MyŠkoda, pour chaque point : c'est l'état de départ, qui servira à vérifier que rien d'autre n'a changé.</li>
-<li>Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé. <strong>Première question : la plage n° 2 de la tuile est-elle bien la deuxième de l'application ?</strong> Le plugin numérote les plages dans l'ordre où Škoda les donne ; que ce soit l'ordre de l'application n'est pas vérifié.</li>
+<li>Sur la tuile, déplier « Voir tous les points » : avec la case cochée, les quatre plages de chaque point sont numérotées (n° 1 à n° 4), les inactives en grisé, dans l'ordre de l'application (vérifié sur un Elroq).</li>
+<li>Vérifier que le mode de charge est « Heures préférées » (dans l'application : « Par heure », « Heures préférées ») : sinon la voiture ne tient pas compte des plages.</li>
 </ol>
 <p>Pour lancer une commande : créer un scénario (Outils → Scénarios → Ajouter), ajouter un bloc « Action », choisir la commande, remplir ses valeurs, sauvegarder, puis « Exécuter ». Pour « heures de la plage », le numéro de la plage va dans le champ titre et les heures dans le champ message, sous la forme 22:00-06:00.</p>
 <p>Chaque modification coûte trois requêtes du quota de l'heure (relecture du point, envoi, relecture une minute après) : espacer les essais, en gardant de quoi lire le véhicule. Après chaque commande, attendre une à deux minutes avant de regarder l'application.</p>
@@ -42,6 +43,7 @@ li { margin: 4px 0; }
 <li><strong>Vérifier que le reste est intact</strong>, en comparant avec la capture du départ : limite de charge, charge minimale, heures de départ, les autres plages du même point, et les autres points de recharge.</li>
 <li><strong>Une modification pendant une charge</strong>, si l'occasion se présente : la voiture accepte-t-elle, la charge continue-t-elle ?</li>
 <li>Facultatif : <strong>deux modifications à la suite</strong> dans un même scénario (deux blocs action), par exemple activer la plage 3 puis changer les heures de la plage 4. Les deux doivent se retrouver dans l'application.</li>
+<li><strong>Changer de mode de charge depuis Jeedom</strong> avec la commande « Choisir le mode de charge » : « Heures préférées », puis « Recharge immédiate ». L'application montre-t-elle le même choix ? (Que « Recharge immédiate » corresponde bien au mode <code>MANUAL</code> de Škoda n'est pas vérifié.)</li>
 </ol>
 <h3>Ce qu'il faut renvoyer</h3>
 <ul>

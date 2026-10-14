@@ -489,7 +489,7 @@ var myskodaJournal = (function() {
       var figures = el('div', 'msj-card-figures')
       if (isTrip) {
         figures.appendChild(el('b', null, show(row.distance, 'km')))
-        figures.appendChild(el('div', null, [show(row.speed, 'km/h'), show(row.consumption, U.consumption, 1)].filter(function(t) { return t != EMPTY }).join(' · ')))
+        figures.appendChild(el('div', null, [show(row.speed, 'km/h'), showConsumption(row.consumption, row.consumptionApprox)].filter(function(t) { return t != EMPTY }).join(' · ')))
         figures.appendChild(el('div', null, row.rangeUsed === null ? '' : '{{Autonomie}} ' + signed(-row.rangeUsed, 'km')))
       } else {
         figures.appendChild(el('b', null, row.energy === null ? signed(row.rangeGained, 'km') : signed(row.energy, U.energy, 1)))
@@ -524,7 +524,7 @@ var myskodaJournal = (function() {
       summary.appendChild(summaryRow('trip', 'fas fa-car-side', [
         [duration(s.tripMinutes), s.tripCount + ' {{trajet(s)}}'],
         [show(s.distance, 'km'), s.speed === null ? '' : show(s.speed, 'km/h')],
-        [show(s.consumption, U.consumption, 1), '{{consommation}}']
+        [showConsumption(s.consumption, s.consumptionApprox), '{{consommation}}']
       ]))
       summary.appendChild(summaryRow('charge', U.icon, [
         U.fuel ? [String(s.chargeCount), U.refills] : [duration(s.chargeMinutes), s.chargeCount + ' ' + U.refills],
@@ -1364,6 +1364,12 @@ var myskodaJournal = (function() {
       return line
     }
 
+    // Consommation d'un trajet ou d'une journée : précédée de « ≈ » quand la batterie a baissé de moins de 5 points
+    function showConsumption(value, approx) {
+      var text = show(value, U.consumption, 1)
+      return (approx && text != EMPTY) ? '≈ ' + text : text
+    }
+
     function consumptionOf(rows) {
       // Calculée sur le total, et seulement si le niveau a baissé d'au moins 5 points en tout : en dessous, le chiffre n'a pas de sens
       var measured = rows.filter(function(row) { return row.energy !== null && row.distance > 0 })
@@ -1387,7 +1393,7 @@ var myskodaJournal = (function() {
       content.appendChild(table(
         [['{{Départ}}'], ['{{De}}', 'msj-left msj-wrap'], ['{{À}}', 'msj-left msj-wrap'], ['{{Durée}}'], ['{{Distance}}'], ['{{Vitesse}}'], [U.level], ['{{Consommé}}'], ['{{Consommation}}'], ['{{Autonomie}}'], ['{{Coût estimé}}']],
         rows.map(function(row) {
-          return { cells: [dayLabel(row.start) + ' ' + hour(row.start), row.from || EMPTY, row.to || EMPTY, tripDuration(row), show(row.distance, 'km'), show(row.speed, 'km/h'), battery(row), show(row.energy, U.energy, 1), show(row.consumption, U.consumption, 1), row.rangeUsed === null ? EMPTY : signed(-row.rangeUsed, 'km'), show(row.cost, '€', 2)] }
+          return { cells: [dayLabel(row.start) + ' ' + hour(row.start), row.from || EMPTY, row.to || EMPTY, tripDuration(row), show(row.distance, 'km'), show(row.speed, 'km/h'), battery(row), show(row.energy, U.energy, 1), showConsumption(row.consumption, row.consumptionApprox), row.rangeUsed === null ? EMPTY : signed(-row.rangeUsed, 'km'), show(row.cost, '€', 2)] }
         })
       ))
       content.appendChild(note(result))
@@ -1417,7 +1423,8 @@ var myskodaJournal = (function() {
         show(energy, U.energy, 1),
         (energy !== null && minutes > 0) ? show(energy / (minutes / 60), 'kW', 1) : EMPTY,
         has(rows, 'rangeGained') ? signed(sum(rows, 'rangeGained'), 'km') : EMPTY,
-        (cost !== null && energy > 0) ? show(cost / energy, U.price, 2) : (isGroup ? EMPTY : show(rows[0].price, U.price, 2)),
+        ((cost !== null && energy > 0) ? show(cost / energy, U.price, 2) : (isGroup ? EMPTY : show(rows[0].price, U.price, 2)))
+          + ((!isGroup && rows[0].offPeakShare !== null && rows[0].offPeakShare !== undefined) ? ' · ' + rows[0].offPeakShare + ' % {{HC}}' : ''),
         show(cost, '€', 2),
         isGroup ? '' : show(rows[0].sinceDistance, 'km'),
         isGroup ? '' : show(rows[0].sinceConsumption, U.consumption, 1)

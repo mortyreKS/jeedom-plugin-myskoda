@@ -1722,6 +1722,12 @@ class myskoda extends eqLogic {
 
   // Prix du kWh à une position : celui du lieu s'il en a un, sinon celui de la configuration du plugin ; 0 si aucun
   private function priceAt($_position) {
+    $own = $this->placePriceAt($_position);
+    return ($own !== null) ? $own : $this->getDefaultPrice();
+  }
+
+  // Prix propre au lieu le plus proche de la position, ou null si ce lieu n'en a pas
+  private function placePriceAt($_position) {
     if ($_position !== null) {
       $places = $this->getPlaces();
       $index = self::nearestPlace($places, $_position[0], $_position[1]);
@@ -1730,7 +1736,86 @@ class myskoda extends eqLogic {
         return (float) $places[$index][$key];
       }
     }
-    return $this->getDefaultPrice();
+    return null;
+  }
+
+  // Heures creuses (demande d'un testeur le 2026-10-14) : une commande info de Jeedom, choisie dans la configuration du
+  // plugin, dit si l'on est en heures creuses (1, ou un texte contenant « HC » ou « creuse ») ; le prix du kWh en heures
+  // creuses s'applique alors à la part de la recharge faite pendant ces heures. La commande vient du compteur de la
+  // maison où est Jeedom : elle ne vaut que pour les recharges faites là (position de Jeedom, Réglages → Système →
+  // Configuration), où le prix du lieu ou à défaut le prix général est celui des heures pleines. Rend null si ce n'est
+  // pas configuré.
+  public static function offPeakCmd() {
+    $text = trim((string) config::byKey('offpeak_cmd', __CLASS__, ''));
+    if ($text == '' || self::offPeakPrice() <= 0) {
+      return null;
+    }
+    try {
+      return cmd::byString($text);
+    } catch (Exception $e) {
+      return null;
+    }
+  }
+
+  public static function offPeakPrice() {
+    return (float) str_replace(',', '.', config::byKey('offpeak_price', __CLASS__, 0));
+  }
+
+  private static function isOffPeakValue($_value) {
+    $text = strtolower(trim((string) $_value));
+    return $text === '1' || strpos($text, 'hc') !== false || strpos($text, 'creuse') !== false;
+  }
+
+  // Part de l'énergie d'une recharge prise en heures creuses : chaque hausse du niveau de batterie est répartie entre
+  // heures creuses et pleines au prorata du temps passé dans chacune entre les deux relevés, d'après l'historique de la
+  // commande heures creuses. Null si la commande n'est pas configurée, ou si son historique ne couvre pas la recharge.
+  private function offPeakShare($_start, $_end) {
+    $cmd = self::offPeakCmd();
+    if ($cmd === null) {
+      return null;
+    }
+    $points = $this->curve($this->levelId(), $_start, $_end);
+    $total = 0;
+    $offPeak = 0;
+    for ($i = 1; $i < count($points); $i++) {
+      $gain = $points[$i][1] - $points[$i - 1][1];
+      $from = strtotime($points[$i - 1][0]);
+      $to = strtotime($points[$i][0]);
+      if ($gain <= 0 || $to <= $from) {
+        continue;
+      }
+      $share = $this->offPeakTimeShare($cmd, $from, $to);
+      if ($share === null) {
+        continue;
+      }
+      $total += $gain;
+      $offPeak += $gain * $share;
+    }
+    return ($total > 0) ? $offPeak / $total : null;
+  }
+
+  // Part du temps passé en heures creuses entre deux instants (horodatages), d'après l'historique de la commande ; null
+  // si l'historique ne dit rien de l'état au début de l'intervalle
+  private function offPeakTimeShare($_cmd, $_from, $_to) {
+    $first = history::byCmdIdAtDatetime($_cmd->getId(), date('Y-m-d H:i:s', $_from));
+    if (!is_object($first)) {
+      return null;
+    }
+    $state = self::isOffPeakValue($first->getValue());
+    $cursor = $_from;
+    $inOffPeak = 0;
+    foreach (history::all($_cmd->getId(), date('Y-m-d H:i:s', $_from + 1), date('Y-m-d H:i:s', $_to)) as $change) {
+      $time = strtotime($change->getDatetime());
+      if ($state) {
+        $inOffPeak += $time - $cursor;
+      }
+      $cursor = $time;
+      $state = self::isOffPeakValue($change->getValue());
+    }
+    if ($state) {
+      $inOffPeak += $_to - $cursor;
+    }
+    return $inOffPeak / ($_to - $_from);
   }
 
   // Position du véhicule stationné à un instant donné : (latitude, longitude), null si inconnue
@@ -2325,7 +2410,10 @@ class myskoda extends eqLogic {
         'levelStart' => $levelStart,
         'levelEnd' => $levelEnd,
         'energy' => $energy,
-        'consumption' => ($energy !== null && $distance > 0 && $used >= self::CONSUMPTION_MIN_DROP) ? round($energy / $distance * 100, 1) : null,
+        // Sous CONSUMPTION_MIN_DROP points, la consommation est donnée quand même, signalée approximative : l'énergie
+        // consommée, tout aussi imprécise, était affichée sans elle (remarque d'un testeur le 2026-10-14)
+        'consumption' => ($energy !== null && $energy > 0 && $distance > 0 && $used >= 1) ? round($energy / $distance * 100, 1) : null,
+        'consumptionApprox' => ($used !== null && $used < self::CONSUMPTION_MIN_DROP),
         'rangeUsed' => self::difference($this->valueAt($this->rangeId(), $start), $this->valueAt($this->rangeId(), $end), 0),
         'cost' => ($energy !== null && $energy > 0 && $price > 0) ? round($energy * $price, 2) : null,
       );
@@ -2408,6 +2496,15 @@ class myskoda extends eqLogic {
       }
       $position = $this->positionAt($start);
       $price = $this->priceAt($position);
+      // Heures creuses : prix moyen de la recharge, pondéré par la part prise en heures creuses, pour une recharge faite
+      // chez soi ; si la position de Jeedom n'est pas réglée, pour toute recharge faite là où vaut le prix général
+      $home = self::jeedomHome();
+      $atHome = ($home === null) ? ($this->placePriceAt($position) === null)
+        : ($position !== null && self::distanceMeters($home[0], $home[1], $position[0], $position[1]) <= self::favoriteRadius());
+      $offPeakShare = $atHome ? $this->offPeakShare($start, $end) : null;
+      if ($offPeakShare !== null) {
+        $price = $offPeakShare * self::offPeakPrice() + (1 - $offPeakShare) * $price;
+      }
       $charges[] = array(
         'type' => 'charge',
         'start' => $start,
@@ -2416,7 +2513,8 @@ class myskoda extends eqLogic {
         'minutes' => $minutes,
         'place' => $this->placeAt($start),
         'position' => $position,
-        'price' => ($price > 0) ? $price : null,
+        'price' => ($price > 0) ? round($price, 4) : null,
+        'offPeakShare' => ($offPeakShare === null) ? null : (int) round($offPeakShare * 100),
         'levelStart' => $levelStart,
         'levelEnd' => $levelEnd,
         'energy' => $energy,
@@ -2531,7 +2629,8 @@ class myskoda extends eqLogic {
         'tripMinutes' => $tripMinutes,
         'distance' => $distance,
         'speed' => ($tripMinutes > 0) ? round($distance / ($tripMinutes / 60)) : null,
-        'consumption' => ($measuredDistance > 0 && $measuredDrop >= self::CONSUMPTION_MIN_DROP) ? round(self::total($measured, 'energy') / $measuredDistance * 100, 1) : null,
+        'consumption' => ($measuredDistance > 0 && $measuredDrop >= 1) ? round(self::total($measured, 'energy') / $measuredDistance * 100, 1) : null,
+        'consumptionApprox' => ($measuredDrop < self::CONSUMPTION_MIN_DROP),
         'chargeCount' => count($charges),
         'chargeMinutes' => self::total($charges, 'minutes'),
         'rangeGained' => (count($charges) > 0) ? self::total($charges, 'rangeGained') : null,
@@ -3063,6 +3162,20 @@ class myskoda extends eqLogic {
       }
       return '<a class="btn btn-xs btn-default" data-ms-cmd="' . $action[$_logicalId]->getId() . '"><i class="' . $_icon . '"></i> ' . $_label . '</a>';
     };
+    // Deux commandes contraires : le bouton de la commande utile selon l'état, l'autre en petit à côté, parce que
+    // l'état affiché peut avoir du retard sur la voiture (comme sur la tuile personnalisée ; idée d'un testeur, 2026-10-14)
+    $pair = function ($_running, $_start, $_stop, $_startLabel, $_stopLabel) use ($action) {
+      $make = function ($_logicalId, $_icon, $_label, $_small) use ($action) {
+        if (!isset($action[$_logicalId])) {
+          return '';
+        }
+        return '<a class="btn btn-xs btn-default' . ($_small ? ' ms-small' : '') . '" data-ms-cmd="' . $action[$_logicalId]->getId() . '" title="' . $_label . '"><i class="' . $_icon . '"></i>'
+          . ($_small ? '' : ' ' . $_label) . '</a>';
+      };
+      return $_running
+        ? $make($_stop, 'fas fa-stop', $_stopLabel, false) . $make($_start, 'fas fa-play', $_startLabel, true)
+        : $make($_start, 'fas fa-play', $_startLabel, false) . $make($_stop, 'fas fa-stop', $_stopLabel, true);
+    };
 
     $tags = array();
     $tags['#ms_image#'] = ($text('image') !== null) ? $text('image') : 'plugins/myskoda/plugin_info/myskoda_icon.png';
@@ -3169,7 +3282,7 @@ class myskoda extends eqLogic {
     if ($modes != '') {
       $charge .= self::tileRow(__('Mode', __FILE__), '<select class="form-control ms-select" data-ms-key="select" data-ms-cmd="' . $action['charge_mode_set']->getId() . '">' . $modes . '</select>');
     }
-    $buttons = $button('charge_start', 'fas fa-play', __('Charger', __FILE__)) . $button('charge_stop', 'fas fa-stop', __('Arrêter', __FILE__));
+    $buttons = $pair($get('charging') == 1, 'charge_start', 'charge_stop', __('Charger', __FILE__), __('Arrêter la charge', __FILE__));
     if ($buttons != '') {
       $charge .= '<div class="ms-actions">' . $buttons . '</div>';
     }
@@ -3197,14 +3310,14 @@ class myskoda extends eqLogic {
     if ($get('climate_on') == 1 && $get('climate_ready_at') !== null) {
       $climate .= self::tileRow(__('Prête à', __FILE__), self::tileDate($get('climate_ready_at')));
     }
-    $buttons = $button('climate_start', 'fas fa-play', __('Démarrer', __FILE__)) . $button('climate_stop', 'fas fa-stop', __('Arrêter', __FILE__));
+    $buttons = $pair($get('climate_on') == 1, 'climate_start', 'climate_stop', __('Démarrer', __FILE__), __('Arrêter la climatisation', __FILE__));
     if ($buttons != '') {
       $climate .= '<div class="ms-actions">' . $buttons . '</div>';
     }
     $tags['#ms_climate#'] = ($climate == '') ? '' : '<div class="ms-block"><div class="ms-title"><i class="fas fa-snowflake"></i>' . __('Climatisation', __FILE__) . '</div>' . $climate . '</div>';
 
     // Chauffage auxiliaire : seulement pour les véhicules qui en annoncent la commande
-    $buttons = $button('aux_heating_start', 'fas fa-play', __('Démarrer', __FILE__)) . $button('aux_heating_stop', 'fas fa-stop', __('Arrêter', __FILE__));
+    $buttons = $pair($get('aux_heating_on') == 1, 'aux_heating_start', 'aux_heating_stop', __('Démarrer', __FILE__), __('Arrêter le chauffage', __FILE__));
     if ($buttons != '') {
       $auxState = ($get('aux_heating_on') === null) ? '' : self::tileRow(__('État', __FILE__), ($get('aux_heating_on') == 1) ? __('En marche', __FILE__) : __('Arrêté', __FILE__));
       $tags['#ms_climate#'] .= '<div class="ms-block"><div class="ms-title"><i class="fas fa-fire"></i>' . __('Chauffage auxiliaire', __FILE__) . '</div>' . $auxState . '<div class="ms-actions">' . $buttons . '</div></div>';

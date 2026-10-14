@@ -8,6 +8,9 @@
 
 - Le mode de charge s'affiche sur la tuile (demande d'un testeur) : dans le bloc Charge, une liste montre le mode actuel, par exemple « Heures préférées », et permet d'en changer. Elle n'apparaît que si le véhicule propose au moins deux modes ; ailleurs, rien ne change. Sur la tuile personnalisée, le changement demande une confirmation. Changer de mode coûte deux requêtes, comme les autres commandes. Décocher « Afficher » sur la commande « Choisir le mode de charge » retire la liste de la tuile.
 - Essayé sur la box, sur la démonstration : la liste, le mode actuel et l'envoi du choix depuis la tuile ; pas encore sur une voiture depuis la tuile (la commande elle-même est confirmée sur deux Elroq).
+- **Prix du kWh en heures creuses** (idée d'un testeur) : dans la configuration du plugin, une commande Jeedom qui dit si l'on est en heures creuses, et le prix du kWh en heures creuses. Pour une recharge faite chez vous (à la position réglée dans Jeedom), la part faite en heures creuses est comptée à ce prix, le reste au prix habituel, qui devient celui des heures pleines. L'onglet Recharges indique cette part à côté du prix moyen. La commande doit être historisée. Essayé sur l'historique de la démonstration, avec une commande d'essai ; pas encore chez un utilisateur.
+- **Consommation des petits trajets** (remarque d'un testeur) : quand la batterie a baissé de moins de 5 points, la consommation d'un trajet ou d'une journée s'affiche maintenant, précédée de « ≈ ». Avant, l'énergie consommée s'affichait seule, sans consommation.
+- **Tuile standard** (idée d'un testeur) : pour la charge, la climatisation et le chauffage auxiliaire, un bouton principal suit l'état (« Charger » ou « Arrêter la charge »), et la commande contraire reste à côté, en petit, comme sur la tuile personnalisée : l'état affiché peut avoir du retard sur la voiture.
 
 # 0.86 — 14/10/2026
 

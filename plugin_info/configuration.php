@@ -285,6 +285,25 @@ $mskExpiresTime = ($mskExpires !== '') ? strtotime($mskExpires) : false;
         </div>
       </div>
       <div class="form-group">
+        <label class="col-md-4 control-label">{{Heures creuses : commande}}
+          <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif. Une commande info de Jeedom qui vaut 1 en heures creuses (par exemple celle de votre compteur ou d'un agenda). Elle doit être historisée. Pour les recharges faites chez vous (position réglée dans Jeedom), la part faite pendant les heures creuses est alors comptée au prix des heures creuses, le reste au prix des heures pleines : le prix de votre lieu s'il en a un, sinon le prix du kWh ci-dessus. Ailleurs, rien ne change}}"></i></sup>
+        </label>
+        <div class="col-md-4">
+          <div class="input-group">
+            <input class="configKey form-control" data-l1key="offpeak_cmd" placeholder="{{#[Objet][Équipement][Heures creuses]#}}"/>
+            <span class="input-group-btn"><a class="btn btn-default" id="bt_myskodaOffPeakCmd" title="{{Choisir la commande}}"><i class="fas fa-list-alt"></i></a></span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="col-md-4 control-label">{{Prix du kWh en heures creuses}} (<?php echo htmlspecialchars(myskoda::currency()); ?>)
+          <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif, avec la commande ci-dessus}}"></i></sup>
+        </label>
+        <div class="col-md-4">
+          <input class="configKey form-control" data-l1key="offpeak_price" placeholder="{{par exemple 0,16}}"/>
+        </div>
+      </div>
+      <div class="form-group">
         <label class="col-md-4 control-label">{{Prix du litre de carburant}} (<?php echo htmlspecialchars(myskoda::currency()); ?>)
           <sup><i class="fas fa-question-circle tooltips" title="{{Facultatif, pour les véhicules thermiques. Sert au journal de bord pour estimer le coût des trajets et des pleins. Si un véhicule utilise un autre carburant, son propre prix se saisit sur l'équipement}}"></i></sup>
         </label>
@@ -330,6 +349,22 @@ $mskExpiresTime = ($mskExpires !== '') ? strtotime($mskExpires) : false;
   </fieldset>
 </form>
 <script>
+// Choix de la commande des heures creuses, par la fenêtre de sélection de commande du core
+(function() {
+  var button = document.getElementById('bt_myskodaOffPeakCmd')
+  if (!button) {
+    return
+  }
+  button.addEventListener('click', function() {
+    jeedom.cmd.getSelectModal({ cmd: { type: 'info' } }, function(result) {
+      var input = document.querySelector('.configKey[data-l1key="offpeak_cmd"]')
+      if (input && result && result.human) {
+        input.value = result.human
+      }
+    })
+  })
+})();
+
 // Rapport de diagnostic : demandé au plugin, affiché tel quel, puis copié ou téléchargé depuis le navigateur
 (function() {
   var button = document.getElementById('bt_myskodaDiagnostic')

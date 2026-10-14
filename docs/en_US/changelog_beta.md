@@ -10,6 +10,9 @@ The detailed history of the earlier beta versions is in the [French changelog](.
 
 - The charging mode shows on the tile (requested by a tester): in the Charging block, a list shows the current mode, for example “Preferred charging times”, and lets you change it. It only appears if the vehicle offers at least two modes; elsewhere, nothing changes. On the customised tile, the change asks for confirmation. Changing mode costs two requests, like the other commands. Unticking “Show” on the “Select charging mode” command removes the list from the tile.
 - Tried on the Jeedom box, on the demonstration vehicle: the list, the current mode and sending the choice from the tile; not yet on a car from the tile (the command itself is confirmed on two Elroq).
+- **Off-peak kWh price** (a tester's idea): in the plugin configuration, a Jeedom command that tells whether it is off-peak, and the off-peak kWh price. For a charging session at home (at the position set in Jeedom), the part made off-peak is counted at that price, the rest at the usual price, which becomes the peak price. The Charging tab shows that part next to the average price. The command must be historised. Tried on the demonstration history, with a test command; not yet with a user.
+- **Consumption of short trips** (a tester's remark): when the battery dropped by less than 5 points, the consumption of a trip or a day is now shown, preceded by “≈”. Before, the energy consumed was shown alone, without consumption.
+- **Standard tile** (a tester's idea): for charging, air conditioning and auxiliary heating, a main button follows the state (“Charge” or “Stop charging”), and the opposite command stays next to it, small, as on the customised tile: the state shown may lag behind the car.
 
 # 0.86 — 14/10/2026
 

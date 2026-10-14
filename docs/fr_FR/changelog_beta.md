@@ -4,6 +4,11 @@
 >
 >Version beta, état des essais au 14/10/2026. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et les fonctions expérimentales. Les retours sont les bienvenus.
 
+# 0.86 — 14/10/2026
+
+- La tuile peut être différente selon l'endroit (demande d'un testeur, qui veut la tuile personnalisée dans le journal de bord mais la tuile standard sur le dashboard et le téléphone). Sur la page du véhicule, sous « Personnalisation de la tuile de l'équipement », trois réglages facultatifs : « Sur le dashboard et les designs », « Sur le mobile », « Dans le journal de bord », chacun « Comme ci-dessus (par défaut) », « Standard » ou « Personnalisée ». Sans y toucher, rien ne change.
+- Essayé sur la box : les trois réglages et leur valeur par défaut, et le rafraîchissement de la tuile du journal de bord par Jeedom, qui garde la présentation choisie pour le journal.
+
 # 0.853 — 14/10/2026
 
 Corrections après les essais d'un second testeur, sur son Elroq : activer, désactiver et changer les heures d'une plage fonctionnent, ainsi que le changement de mode de charge (« Recharge immédiate » est bien le mode `MANUAL` de Škoda).

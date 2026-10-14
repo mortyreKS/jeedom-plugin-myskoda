@@ -171,6 +171,20 @@ $eqLogics = eqLogic::byType($plugin->getId());
 									</select>
 								</div>
 							</div>
+							<?php foreach (array('dashboard' => array('{{Sur le dashboard et les designs}}', '{{Pour une présentation différente sur le dashboard et les designs. Par défaut, celle du réglage ci-dessus}}'), 'mobile' => array('{{Sur le mobile}}', '{{Pour une présentation différente dans la version mobile de Jeedom. Par défaut, celle du réglage ci-dessus}}'), 'journal' => array('{{Dans le journal de bord}}', '{{Pour une présentation différente dans le journal de bord du plugin (onglet Véhicule). Par défaut, celle du réglage ci-dessus}}')) as $place => $texts) { ?>
+							<div class="form-group">
+								<label class="col-sm-4 control-label"><?php echo $texts[0]; ?>
+									<sup><i class="fas fa-question-circle tooltips" title="<?php echo $texts[1]; ?>"></i></sup>
+								</label>
+								<div class="col-sm-6">
+									<select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="tile_style_<?php echo $place; ?>">
+										<option value="">{{Comme ci-dessus (par défaut)}}</option>
+										<option value="standard">{{Standard}}</option>
+										<option value="card">{{Personnalisée}}</option>
+									</select>
+								</div>
+							</div>
+							<?php } ?>
 							<div class="form-group">
 								<label class="col-sm-4 control-label">{{Couleur de fond de la tuile personnalisée}}
 									<sup><i class="fas fa-question-circle tooltips" title="{{Pour la tuile personnalisée seulement. Le fond est un dégradé de cette couleur ; sur une couleur claire, les textes passent au sombre}}"></i></sup>

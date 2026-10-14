@@ -6,6 +6,11 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.86 — 14/10/2026
+
+- The tile can differ depending on the place (requested by a tester who wants the customised tile in the logbook but the standard tile on the dashboard and the phone). On the vehicle page, under “Tile customisation”, three optional settings: “On the dashboard and designs”, “On mobile”, “In the logbook”, each “As above (default)”, “Standard” or “Customised”. If you leave them alone, nothing changes.
+- Tried on the Jeedom box: the three settings and their default value, and Jeedom's refresh of the logbook tile, which keeps the layout chosen for the logbook.
+
 # 0.853 — 14/10/2026
 
 Fixes after the tests of a second tester, on their Elroq: enabling, disabling and changing the hours of a charging time work, and so does changing the charging mode (“Immediate charging” is indeed Škoda's `MANUAL` mode).

@@ -2545,13 +2545,40 @@ class myskoda extends eqLogic {
 
   // Tuile dédiée. Chaque élément suit la case « Afficher » de sa commande ; l'option d'affichage
   // « widgetTmpl » de l'équipement à 0 rend la tuile standard de Jeedom.
+  // Préfixe de la version demandée par le journal de bord : la tuile y suit son propre réglage. Il est repris dans
+  // l'attribut data-version de la tuile, que le core relit pour la rafraîchir (jeedom.eqLogic.refreshValue,
+  // core/js/eqLogic.class.js du core 4.6.1) : la tuile du journal reste ainsi celle du journal.
+  const JOURNAL_VERSION_PREFIX = 'msjournal_';
+
+  // Présentation de la tuile selon l'endroit : réglage propre au dashboard (designs compris), au mobile ou au journal
+  // de bord s'il est choisi, sinon le réglage général de l'équipement (seul réglage jusqu'à la 0.853 ; demande d'un
+  // testeur le 2026-10-14, qui veut la tuile personnalisée dans le journal de bord seulement)
+  public function tileStyleFor($_version, $_journal) {
+    $place = $_journal ? 'journal' : (($_version == 'mobile') ? 'mobile' : 'dashboard');
+    $style = (string) $this->getConfiguration('tile_style_' . $place, '');
+    if ($style == 'standard') {
+      return '';
+    }
+    if ($style == 'card') {
+      return 'card';
+    }
+    return ($this->getConfiguration('tile_style') == 'card') ? 'card' : '';
+  }
+
   public function toHtml($_version = 'dashboard') {
     if ($this->getDisplay('widgetTmpl', 1) == 0) {
       return parent::toHtml($_version);
     }
+    $journal = (strpos((string) $_version, self::JOURNAL_VERSION_PREFIX) === 0);
+    if ($journal) {
+      $_version = substr($_version, strlen(self::JOURNAL_VERSION_PREFIX));
+    }
     $replace = $this->preToHtml($_version);
     if (!is_array($replace)) {
       return $replace;
+    }
+    if ($journal) {
+      $replace['#version#'] = self::JOURNAL_VERSION_PREFIX . $_version;
     }
     $version = jeedom::versionAlias($_version);
     if ($version == 'dashboard' && $this->getDisplay('width', 'auto') == 'auto') {
@@ -2562,7 +2589,7 @@ class myskoda extends eqLogic {
     $replace['#height#'] = 'auto';
     // Présentation « carte » (option de l'équipement) : une carte de taille fixe, au fond sombre, pensée pour un design.
     // Elle remplace le cadre et le bandeau de titre que le core dessine autour d'une tuile.
-    if ($this->getConfiguration('tile_style') == 'card') {
+    if ($this->tileStyleFor($version, $journal) == 'card') {
       $replace['#class#'] = trim($replace['#class#'] . ' myskoda-card-host');
       $replace['#eqLogic_class#'] = '';
       // Le fond du cadre est imposé par le thème avec une règle prioritaire sur toute feuille de style du plugin

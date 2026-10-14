@@ -595,7 +595,7 @@ var myskodaJournal = (function() {
 
     // ----- Onglet Véhicule : la tuile de chaque voiture, telle que Jeedom la sert, avec ses boutons
     function loadTile(id, holder) {
-      fetch('core/ajax/eqLogic.ajax.php', { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'toHtml', id: id, version: version }) })
+      fetch('core/ajax/eqLogic.ajax.php', { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'toHtml', id: id, version: 'msjournal_' + version }) })
         .then(function(response) { return response.json() })
         .then(function(answer) {
           if (answer.state != 'ok') {

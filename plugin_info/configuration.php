@@ -295,6 +295,19 @@ $mskExpiresTime = ($mskExpires !== '') ? strtotime($mskExpires) : false;
     </div>
 
     <div class="msk-cfg-block">
+      <h4><i class="fas fa-flask"></i>{{Fonctions expérimentales}}</h4>
+      <p class="msk-cfg-help">{{Fonctions écrites d'après la documentation de Škoda mais jamais essayées sur un véhicule. Elles sont réservées aux personnes prêtes à les essayer et à faire un retour : la liste et les essais à faire sont dans la documentation.}}</p>
+      <div class="form-group">
+        <label class="col-md-4 control-label">{{Activer les fonctions expérimentales}}
+          <sup><i class="fas fa-question-circle tooltips" title="{{Cochée, les commandes expérimentales sont créées à la lecture suivante de chaque véhicule qui les permet. Décochée ensuite, ces commandes restent en place mais sont refusées, pour ne pas casser vos scénarios : il suffit de recocher la case pour les retrouver}}"></i></sup>
+        </label>
+        <div class="col-md-4">
+          <input type="checkbox" class="configKey" data-l1key="experimental"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="msk-cfg-block">
       <h4><i class="fas fa-life-ring"></i>{{Diagnostic et support}}</h4>
       <div class="form-group">
         <label class="col-md-4 control-label">{{Rapport de diagnostic}}

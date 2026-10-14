@@ -691,6 +691,19 @@ class myskoda extends eqLogic {
   // Unités d'affichage, réglées une fois pour tout le plugin dans sa configuration : « imperial » pour les miles
   // (Royaume-Uni), sinon le système métrique. Seul l'affichage est converti (tuile, journal de bord, exports) : les
   // valeurs des commandes restent en kilomètres, pour qu'un scénario ne change pas de sens avec ce réglage.
+  // Fonctions expérimentales (écrites d'après la spécification, jamais essayées sur un véhicule) : réservées aux
+  // utilisateurs qui cochent la case de la configuration du plugin. Décochée, leurs commandes ne sont pas créées, et
+  // celles déjà créées sont refusées sans être supprimées, pour ne pas casser un scénario.
+  public static function experimentalEnabled() {
+    return config::byKey('experimental', __CLASS__, 0) == 1;
+  }
+
+  public static function checkExperimental() {
+    if (!self::experimentalEnabled()) {
+      throw new Exception(__('Fonction expérimentale désactivée dans la configuration du plugin', __FILE__));
+    }
+  }
+
   public static function isImperial() {
     return config::byKey('units', __CLASS__, 'metric') == 'imperial';
   }

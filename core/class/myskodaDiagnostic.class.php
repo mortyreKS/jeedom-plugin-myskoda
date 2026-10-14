@@ -81,6 +81,7 @@ class myskodaDiagnostic {
     $lines[] = self::line('monnaie', myskoda::currency());
     $lines[] = self::line('prix.kwh.renseigne', self::yesNo(config::byKey('kwh_price', 'myskoda') != ''));
     $lines[] = self::line('prix.carburant.renseigne', self::yesNo(config::byKey('fuel_price', 'myskoda') != ''));
+    $lines[] = self::line('fonctions.experimentales', self::yesNo(myskoda::experimentalEnabled()));
     return $lines;
   }
 

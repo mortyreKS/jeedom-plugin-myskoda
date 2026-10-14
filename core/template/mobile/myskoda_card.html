@@ -102,7 +102,11 @@
         // Jeedom change de page sans recharger : rien n'est envoyé si la carte n'est plus affichée
         if (!document.body.contains(card)) return
         var options = { id: item.getAttribute('data-ms-cmd') }
-        if (value !== undefined) options.value = { slider: value }
+        // Valeur envoyée comme un curseur, ou comme un choix de liste pour le mode de charge (data-ms-key)
+        if (value !== undefined) {
+          options.value = {}
+          options.value[item.getAttribute('data-ms-key') || 'slider'] = value
+        }
         item.classList.add('msc-attente')
         // Commande refusée (quota, erreur de Škoda) : le bouton reprend son aspect, sinon il resterait estompé
         options.error = function(error) {

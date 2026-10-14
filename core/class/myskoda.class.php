@@ -1482,6 +1482,29 @@ class myskoda extends eqLogic {
     $this->setCache('chargingTimeEdits', array_merge($this->recentChargingTimeEdits(), $done));
   }
 
+  // Choix du mode de charge pour la tuile (demande d'un testeur le 2026-10-14) : rien si le véhicule ne propose pas au
+  // moins deux modes. Le mode actuel est lu sur sa commande, masquée par défaut, que la tuile ne reçoit donc pas.
+  private function chargeModeOptions($_cmd) {
+    $items = array_values(array_filter(explode(';', (string) $_cmd->getConfiguration('listValue'))));
+    if (count($items) < 2) {
+      return '';
+    }
+    $info = $this->getCmd('info', 'charge_mode');
+    $current = is_object($info) ? (string) $info->execCmd() : '';
+    $html = '';
+    $known = false;
+    foreach ($items as $item) {
+      list($value, $label) = array_pad(explode('|', $item, 2), 2, '');
+      $selected = ($value === $current);
+      $known = $known || $selected;
+      $html .= '<option value="' . htmlspecialchars($value) . '"' . ($selected ? ' selected' : '') . '>' . htmlspecialchars(($label == '') ? $value : $label) . '</option>';
+    }
+    if (!$known) {
+      $html = '<option value="" selected disabled>' . (($current == '') ? '…' : htmlspecialchars($current)) . '</option>' . $html;
+    }
+    return $html;
+  }
+
   private static function buildChargeModeList($_modes) {
     if (!is_array($_modes)) {
       return '';
@@ -2907,6 +2930,11 @@ class myskoda extends eqLogic {
       }
       $blocks .= '<div class="msc-bloc">' . $button . '<div class="msc-txt"><div class="msc-titre">' . ($charging ? __('Charge en cours', __FILE__) : __('Charge', __FILE__)) . '</div>'
         . '<div class="msc-sous">' . implode(' · ', $details) . '</div></div>' . $list . '</div>';
+      $modes = isset($action['charge_mode_set']) ? $this->chargeModeOptions($action['charge_mode_set']) : '';
+      if ($modes != '') {
+        $blocks .= '<div class="msc-ligne" style="align-items:center;"><span>' . __('Mode de charge', __FILE__) . '</span><select class="msc-liste" title="' . __('Mode de charge', __FILE__)
+          . '" data-ms-key="select" data-ms-cmd="' . $action['charge_mode_set']->getId() . '" data-ms-confirm="' . __('Passer le mode de charge du véhicule à « %s » ?', __FILE__) . '">' . $modes . '</select></div>';
+      }
     }
     // Climatisation
     $state = $get('climate_state');
@@ -3136,6 +3164,10 @@ class myskoda extends eqLogic {
       $charge .= self::tileRow(__('Limite', __FILE__), '<select class="form-control ms-select" data-ms-cmd="' . $cmd->getId() . '">' . $options . '</select>');
     } elseif ($get('charge_limit') !== null) {
       $charge .= self::tileRow(__('Limite', __FILE__), round((float) $get('charge_limit')) . ' %');
+    }
+    $modes = isset($action['charge_mode_set']) ? $this->chargeModeOptions($action['charge_mode_set']) : '';
+    if ($modes != '') {
+      $charge .= self::tileRow(__('Mode', __FILE__), '<select class="form-control ms-select" data-ms-key="select" data-ms-cmd="' . $action['charge_mode_set']->getId() . '">' . $modes . '</select>');
     }
     $buttons = $button('charge_start', 'fas fa-play', __('Charger', __FILE__)) . $button('charge_stop', 'fas fa-stop', __('Arrêter', __FILE__));
     if ($buttons != '') {

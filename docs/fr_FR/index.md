@@ -2,7 +2,7 @@
 
 Suivi et pilotage d'un véhicule Škoda par l'API publique officielle MyŠkoda.
 
-> Documentation du plugin en version 0.86 beta, publiée le 14/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
+> Documentation du plugin en version 0.87 beta, publiée le 14/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
 
 Prérequis : Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie (elle n'est plus maintenue depuis le 31 août 2026) : la logique est de passer à Debian 12 au minimum. Pour autant, le plugin y fonctionne aujourd'hui : un testeur fait tourner la version 0.81 sous Debian 11.11 avec PHP 7.4.33 (installation, mise à jour, lecture du véhicule, points de recharge, rapport de diagnostic). Le plugin n'a ni démon ni dépendance.
 
@@ -69,7 +69,7 @@ Le plugin crée les commandes à la première lecture, d'après ce que le véhic
 - **Démarrer la charge** (action/other) : démarre la charge.
 - **Arrêter la charge** (action/other) : arrête la charge.
 - **Régler la limite de charge** (action/slider) : de 50 à 100 %, par pas de 10.
-- **Choisir le mode de charge** (action/select) : parmi les modes que le véhicule propose, sous les mots de l'application MyŠkoda quand ils sont connus : « Recharge immédiate » (`MANUAL`) et « Heures préférées » (`PREFERRED_CHARGING_TIMES`), sur un Elroq.
+- **Choisir le mode de charge** (action/select) : parmi les modes que le véhicule propose, sous les mots de l'application MyŠkoda quand ils sont connus : « Recharge immédiate » (`MANUAL`) et « Heures préférées » (`PREFERRED_CHARGING_TIMES`), sur un Elroq. Si le véhicule propose au moins deux modes, la tuile affiche le mode actuel dans son bloc Charge, avec une liste pour le changer (depuis la version 0.87) ; décocher « Afficher » sur cette commande retire la liste de la tuile.
 
 ### Points de recharge
 

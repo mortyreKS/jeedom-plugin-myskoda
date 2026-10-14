@@ -71,7 +71,10 @@
       })
       tile.querySelectorAll('select[data-ms-cmd]').forEach(function(select) {
         select.addEventListener('change', function() {
-          jeedom.cmd.execute({ id: select.getAttribute('data-ms-cmd'), value: { slider: select.value } })
+          // Valeur envoyée comme un curseur, ou comme un choix de liste pour le mode de charge (data-ms-key)
+          var value = {}
+          value[select.getAttribute('data-ms-key') || 'slider'] = select.value
+          jeedom.cmd.execute({ id: select.getAttribute('data-ms-cmd'), value: value })
         })
       })
       // Sur le dashboard, Jeedom fige la hauteur d'une tuile au moment où il la place : si son contenu grandit ensuite

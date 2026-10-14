@@ -6,6 +6,11 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.87 — 14/10/2026
+
+- The charging mode shows on the tile (requested by a tester): in the Charging block, a list shows the current mode, for example “Preferred charging times”, and lets you change it. It only appears if the vehicle offers at least two modes; elsewhere, nothing changes. On the customised tile, the change asks for confirmation. Changing mode costs two requests, like the other commands. Unticking “Show” on the “Select charging mode” command removes the list from the tile.
+- Tried on the Jeedom box, on the demonstration vehicle: the list, the current mode and sending the choice from the tile; not yet on a car from the tile (the command itself is confirmed on two Elroq).
+
 # 0.86 — 14/10/2026
 
 - The tile can differ depending on the place (requested by a tester who wants the customised tile in the logbook but the standard tile on the dashboard and the phone). On the vehicle page, under “Tile customisation”, three optional settings: “On the dashboard and designs”, “On mobile”, “In the logbook”, each “As above (default)”, “Standard” or “Customised”. If you leave them alone, nothing changes.

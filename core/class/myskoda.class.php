@@ -2003,6 +2003,13 @@ class myskoda extends eqLogic {
 
   // Question posée au service Nominatim d'OpenStreetMap ; réponse décodée, null si le service n'a pas répondu
   private static function askNominatim($_query) {
+    // Le service n'admet qu'une demande par seconde : plusieurs comptes peuvent désormais chercher en même temps
+    $last = (float) cache::byKey('myskoda::nominatimAt')->getValue(0);
+    $wait = $last + 1.1 - microtime(true);
+    if ($wait > 0) {
+      usleep((int) (min($wait, 1.1) * 1000000));
+    }
+    cache::set('myskoda::nominatimAt', microtime(true), 60);
     $ch = curl_init('https://nominatim.openstreetmap.org/' . $_query);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);

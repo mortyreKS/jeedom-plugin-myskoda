@@ -4,6 +4,10 @@
 >
 >Version beta, état des essais au 14/10/2026. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et les fonctions expérimentales. Les retours sont les bienvenus.
 
+# 0.89 — 15/10/2026
+
+- Lieux : les comptes Jeedom « Utilisateur » peuvent désormais les créer, les renommer, les déplacer, changer leur couleur et leur prix, et chercher une adresse, comme un administrateur. Nommer un lieu relève de l'usage, pas de la configuration de la box. Un compte « Utilisateur limité » le peut s'il a le droit d'action sur le véhicule (celui qui lui permet déjà de lancer la charge ou la climatisation) ; en simple lecture, il voit les lieux sans pouvoir les changer. La configuration du plugin et l'ajout d'un véhicule restent réservés aux administrateurs.
+
 # 0.88 — 15/10/2026
 
 - Haut du journal de bord refait : un bouton par véhicule, avec son nom seul (sans l'objet), un point de couleur, son état et le niveau de sa batterie ou de son carburant, relus chaque minute dans Jeedom sans requête vers Škoda ; onglets soulignés, avec une icône ; raccourcis « Équipements » et « Configuration » en texte simple à droite ; « Vue électrique » et « Vue carburant » d'un hybride en deux segments accolés. Sur téléphone, véhicules et onglets défilent sur une ligne. Aucun réglage ni aucune donnée ne change.

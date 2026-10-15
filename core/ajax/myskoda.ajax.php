@@ -41,14 +41,18 @@ try {
     }
 
     if (init('action') == 'searchAddress') {
-        if (!isConnect('admin')) {
+        // Recherche d'adresse ouverte à qui peut modifier les lieux du véhicule (voir plus bas)
+        $eqLogic = myskoda::byId(init('id'));
+        if (!is_object($eqLogic) || $eqLogic->getEqType_name() != 'myskoda' || !$eqLogic->hasRight('x')) {
             throw new Exception(__('401 - Accès non autorisé', __FILE__));
         }
         ajax::success(myskoda::searchAddress(init('address')));
     }
 
     if (init('action') == 'findAddress') {
-        if (!isConnect('admin')) {
+        // Recherche d'adresse ouverte à qui peut modifier les lieux du véhicule (voir plus bas)
+        $eqLogic = myskoda::byId(init('id'));
+        if (!is_object($eqLogic) || $eqLogic->getEqType_name() != 'myskoda' || !$eqLogic->hasRight('x')) {
             throw new Exception(__('401 - Accès non autorisé', __FILE__));
         }
         ajax::success(myskoda::findAddress(init('lat'), init('lng')));
@@ -97,7 +101,9 @@ try {
             throw new Exception(__('Véhicule inconnu', __FILE__));
         }
         $eqLogic->setEnergy(init('energy'));
-        if (init('action') != 'getMap' && !isConnect('admin')) {
+        // Les lieux sont de l'usage, pas de la configuration : un administrateur ou un utilisateur les modifie, un
+        // utilisateur limité seulement s'il a le droit d'action sur ce véhicule (celui qui lance déjà charge et climatisation)
+        if (init('action') != 'getMap' && !$eqLogic->hasRight('x')) {
             throw new Exception(__('401 - Accès non autorisé', __FILE__));
         }
         if (init('action') == 'renamePlace') {
@@ -128,7 +134,7 @@ try {
             $eqLogic->addHomePlace();
         }
         $map = $eqLogic->getMap();
-        $map['canEdit'] = isConnect('admin');
+        $map['canEdit'] = $eqLogic->hasRight('x');
         $map['price'] = $eqLogic->getDefaultPrice();
         ajax::success($map);
     }

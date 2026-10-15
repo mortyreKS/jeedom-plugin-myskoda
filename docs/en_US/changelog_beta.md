@@ -6,6 +6,10 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.89 — 15/10/2026
+
+- Places: Jeedom “User” accounts can now create, rename, move them, change their colour and price, and search for an address, like an administrator. Naming a place is everyday use, not box configuration. A “Limited user” account can do so if it has the action right on the vehicle (the one that already lets it start charging or air conditioning); with read-only rights it sees places without being able to change them. The plugin configuration and adding a vehicle remain for administrators.
+
 # 0.88 — 15/10/2026
 
 - Top of the logbook redesigned: one button per vehicle, with its name only (without the object), a coloured dot, its state and its battery or fuel level, read again every minute in Jeedom without any request to Škoda; underlined tabs with an icon; “Devices” and “Configuration” shortcuts as plain text on the right; a hybrid's “Electric view” and “Fuel view” as two joined segments. On a phone, vehicles and tabs scroll on one line. No setting or data changes.

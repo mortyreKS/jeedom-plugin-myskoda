@@ -2,7 +2,7 @@
 
 Monitoring and control of a Škoda vehicle through the official public MyŠkoda API.
 
-> Documentation of the plugin in version 0.88 beta, published on 15/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
+> Documentation of the plugin in version 0.89 beta, published on 15/10/2026. It describes what the public Škoda API allows at that date (version 1.1.0). Škoda may change its API: what is written here, in particular the request quota and the list of available commands, applies to this version. Škoda's API documentation: [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), with its [changelog](https://public.api.connect.skoda-auto.cz/docs/changelog) and its [detailed technical reference](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), which lists every request the plugin can send to Škoda.
 
 Requirements: Jeedom 4.4 or later (the plugin is tested on Jeedom 4.6), on Debian 12 or Debian 13. Debian 11 has reached end of life (it has not been maintained since 31 August 2026): the sensible path is to move to Debian 12 at least. That said, the plugin works on it today: a tester runs version 0.81 on Debian 11.11 with PHP 7.4.33 (installation, update, vehicle reading, charging locations, diagnostic report). The plugin has no daemon and no dependency.
 
@@ -224,7 +224,7 @@ Places are the parking addresses given by Škoda, which the plugin remembers as 
 
 Two parking stops less than 60 metres apart are the same place. The position sent by the car is not always exact: it can be off by more than a hundred metres while the car is parked in the same spot, which creates a second place.
 
-**“Places” tab: your favourite places.** This tab of the logbook gathers everything about places: their map, adding a favourite and the list of known places. A favourite (Home, Work, School…) attaches to itself every parking stop made within its radius, and its address no longer changes. Only Jeedom administrators can change places; other users see the list without being able to change it.
+**“Places” tab: your favourite places.** This tab of the logbook gathers everything about places: their map, adding a favourite and the list of known places. A favourite (Home, Work, School…) attaches to itself every parking stop made within its radius, and its address no longer changes. Jeedom “Administrator” and “User” accounts can change places; a “Limited user” account can if it has the action right on the vehicle (the one that lets it start charging or air conditioning), otherwise it sees the list without being able to change it.
 
 ![Places tab: map of favourites with their radius, adding a favourite and list of places](../fr_FR/images/ecran-lieux.png)
 

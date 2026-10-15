@@ -2,7 +2,7 @@
 
 Suivi et pilotage d'un véhicule Škoda par l'API publique officielle MyŠkoda.
 
-> Documentation du plugin en version 0.88 beta, publiée le 15/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
+> Documentation du plugin en version 0.89 beta, publiée le 15/10/2026. Elle décrit ce que permet l'API publique de Škoda à cette date (version 1.1.0). Škoda peut faire évoluer son API : ce qui est écrit ici, en particulier le quota de requêtes et la liste des commandes possibles, vaut pour cette version. Documentation de l'API chez Škoda (en anglais) : [public.api.connect.skoda-auto.cz/docs](https://public.api.connect.skoda-auto.cz/docs), avec son [journal des évolutions](https://public.api.connect.skoda-auto.cz/docs/changelog) et sa [référence technique détaillée](https://public.api.connect.skoda-auto.cz/docs/swagger-ui/index.html), qui liste chaque demande que le plugin peut adresser à Škoda.
 
 Prérequis : Jeedom 4.4 ou plus récent (le plugin est testé sur Jeedom 4.6), sous Debian 12 ou Debian 13. Debian 11 est en fin de vie (elle n'est plus maintenue depuis le 31 août 2026) : la logique est de passer à Debian 12 au minimum. Pour autant, le plugin y fonctionne aujourd'hui : un testeur fait tourner la version 0.81 sous Debian 11.11 avec PHP 7.4.33 (installation, mise à jour, lecture du véhicule, points de recharge, rapport de diagnostic). Le plugin n'a ni démon ni dépendance.
 
@@ -224,7 +224,7 @@ Les lieux sont les adresses de stationnement données par Škoda, que le plugin 
 
 Deux stationnements à moins de 60 mètres l'un de l'autre sont le même lieu. La position transmise par la voiture n'est pas toujours exacte : il arrive qu'elle s'écarte de plus de cent mètres alors que la voiture est garée au même endroit, ce qui crée un second lieu.
 
-**Onglet « Lieux » : vos lieux favoris.** Cet onglet du journal de bord rassemble tout ce qui concerne les lieux : leur carte, l'ajout d'un favori et la liste des lieux connus. Un favori (Maison, Travail, École…) rattache à lui tout stationnement fait dans son rayon, et son adresse ne change plus. Seuls les administrateurs de Jeedom peuvent modifier les lieux ; les autres utilisateurs voient la liste sans pouvoir la changer.
+**Onglet « Lieux » : vos lieux favoris.** Cet onglet du journal de bord rassemble tout ce qui concerne les lieux : leur carte, l'ajout d'un favori et la liste des lieux connus. Un favori (Maison, Travail, École…) rattache à lui tout stationnement fait dans son rayon, et son adresse ne change plus. Les comptes Jeedom « Administrateur » et « Utilisateur » peuvent modifier les lieux ; un compte « Utilisateur limité » le peut s'il a le droit d'action sur le véhicule (celui qui lui permet de lancer la charge ou la climatisation), sinon il voit la liste sans pouvoir la changer.
 
 ![Onglet Lieux : carte des favoris avec leur rayon, ajout d'un favori et liste des lieux](images/ecran-lieux.png)
 

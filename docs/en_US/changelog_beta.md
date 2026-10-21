@@ -6,6 +6,14 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.90 — 21/10/2026
+
+- **Price 0 on a place** (a tester's request): in the “Places” tab, a price of 0 in the “Price per kWh here” (or “Price per litre here”) setting means charging is free there, at a customer's or a friend's who offers it: charging sessions there cost 0. An empty box keeps the general price, as before. Until now, 0 was erased and these sessions were counted at the general price.
+- Fix: the return leg of a round trip could appear split in two, a first trip reaching the destination, then a second one of a few kilometres, “unknown duration”, from the destination to itself. Škoda sometimes sends the last kilometres just after reporting the car as parked; they are now attached to the trip they end. The logbook also shows days already recorded corrected.
+- Fix: a charging session could be placed at the previous parking spot (for example at the morning's charging place, 250 km away) when the car started charging as soon as it arrived. Its place, price and off-peak share are now taken where it really happened, including for sessions already recorded.
+- Known limit, which cannot be fixed: the battery level at the start of a fast charge can be a few points higher than in the MyŠkoda app. Škoda sometimes sends no reading between arrival and the start of charging, and above 100 kW the battery gains about 2 points a minute; the API provides no charging history.
+- Tested on the box on a history rebuilt from the times recorded at the tester's; not yet on a car.
+
 # 0.89 — 15/10/2026
 
 - Places: Jeedom “User” accounts can now create, rename, move them, change their colour and price, and search for an address, like an administrator. Naming a place is everyday use, not box configuration. A “Limited user” account can do so if it has the action right on the vehicle (the one that already lets it start charging or air conditioning); with read-only rights it sees places without being able to change them. The plugin configuration and adding a vehicle remain for administrators.

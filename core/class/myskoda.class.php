@@ -1826,13 +1826,14 @@ class myskoda extends eqLogic {
     return ($own !== null) ? $own : $this->getDefaultPrice();
   }
 
-  // Prix propre au lieu le plus proche de la position, ou null si ce lieu n'en a pas
+  // Prix propre au lieu le plus proche de la position, ou null si ce lieu n'en a pas ; 0 pour un lieu où l'on recharge
+  // gratuitement (demande d'un testeur le 2026-10-21 : un client qui offre la charge)
   private function placePriceAt($_position) {
     if ($_position !== null) {
       $places = $this->getPlaces();
       $index = self::nearestPlace($places, $_position[0], $_position[1]);
       $key = $this->placePriceKey();
-      if ($index !== null && isset($places[$index][$key]) && $places[$index][$key] > 0) {
+      if ($index !== null && isset($places[$index][$key]) && is_numeric($places[$index][$key]) && $places[$index][$key] >= 0) {
         return (float) $places[$index][$key];
       }
     }
@@ -1955,9 +1956,11 @@ class myskoda extends eqLogic {
       // Une adresse corrigée à la main n'est plus remplacée par celle que Škoda donne à chaque stationnement
       $places[$_index]['addressFixed'] = true;
     }
-    $price = (float) str_replace(',', '.', $_price);
+    // Vide : le prix général ; 0 : gratuit à cet endroit
+    $text = trim(str_replace(',', '.', (string) $_price));
+    $price = (float) $text;
     $key = $this->placePriceKey();
-    if ($price > 0) {
+    if ($text !== '' && is_numeric($text) && $price >= 0) {
       $places[$_index][$key] = $price;
     } else {
       unset($places[$_index][$key]);
@@ -2241,7 +2244,7 @@ class myskoda extends eqLogic {
     // reste, et la liste le signale comme couvert, pour ne rien effacer de ce que l'utilisateur a saisi.
     foreach (array_keys($_places) as $index) {
       $place = $_places[$index];
-      $touched = (isset($place['name']) && $place['name'] != '') || !empty($place['price']) || !empty($place['priceFuel']) || !empty($place['addressFixed']);
+      $touched = (isset($place['name']) && $place['name'] != '') || isset($place['price']) || isset($place['priceFuel']) || !empty($place['addressFixed']);
       if (!$touched && self::coveringFavorite($_places, $index) !== null) {
         unset($_places[$index]);
       }
@@ -2492,6 +2495,7 @@ class myskoda extends eqLogic {
         $at = $history->getDatetime();
         $position = $this->positionAt($at);
         $price = $this->priceAt($position);
+        $free = ($this->placePriceAt($position) === 0.0);
         $quantity = ($capacity > 0) ? round($capacity * ($level - $previous) / 100, 1) : null;
         $refuels[] = array(
           'type' => 'charge',
@@ -2501,14 +2505,14 @@ class myskoda extends eqLogic {
           'minutes' => 0,
           'place' => $this->placeAt($at),
           'position' => $position,
-          'price' => ($price > 0) ? $price : null,
+          'price' => ($price > 0 || $free) ? $price : null,
           'levelStart' => $previous,
           'levelEnd' => $level,
           'energy' => $quantity,
           'power' => null,
           'maxPower' => null,
           'rangeGained' => self::difference($this->valueAt($this->rangeId(), date('Y-m-d H:i:s', strtotime($at) + 120)), $this->valueAt($this->rangeId(), date('Y-m-d H:i:s', strtotime($at) - 1)), 0),
-          'cost' => ($quantity !== null && $price > 0) ? round($quantity * $price, 2) : null,
+          'cost' => ($quantity !== null && ($price > 0 || $free)) ? round($quantity * $price, 2) : null,
         );
       }
       $previous = $level;
@@ -2671,12 +2675,14 @@ class myskoda extends eqLogic {
       // 2026-10-20 : recharge rapide placée au lieu de la recharge du matin, à 250 km, position écrite 12 s après).
       $position = $this->positionAt($end);
       $price = $this->priceAt($position);
+      // Lieu où la recharge est offerte : coût nul, heures creuses sans objet
+      $free = ($this->placePriceAt($position) === 0.0);
       // Heures creuses : prix moyen de la recharge, pondéré par la part prise en heures creuses, pour une recharge faite
       // chez soi ; si la position de Jeedom n'est pas réglée, pour toute recharge faite là où vaut le prix général
       $home = self::jeedomHome();
       $atHome = ($home === null) ? ($this->placePriceAt($position) === null)
         : ($position !== null && self::distanceMeters($home[0], $home[1], $position[0], $position[1]) <= self::favoriteRadius());
-      $offPeakShare = $atHome ? $this->offPeakShare($start, $end) : null;
+      $offPeakShare = ($atHome && !$free) ? $this->offPeakShare($start, $end) : null;
       if ($offPeakShare !== null) {
         $price = $offPeakShare * self::offPeakPrice() + (1 - $offPeakShare) * $price;
       }
@@ -2688,7 +2694,7 @@ class myskoda extends eqLogic {
         'minutes' => $minutes,
         'place' => ($position === null) ? null : $this->placeLabel($position[0], $position[1]),
         'position' => $position,
-        'price' => ($price > 0) ? round($price, 4) : null,
+        'price' => ($price > 0 || $free) ? round($price, 4) : null,
         'offPeakShare' => ($offPeakShare === null) ? null : (int) round($offPeakShare * 100),
         'levelStart' => $levelStart,
         'levelEnd' => $levelEnd,
@@ -2697,7 +2703,7 @@ class myskoda extends eqLogic {
         'power' => ($energy !== null && $energy > 0 && $minutes > 0) ? round($energy / ($minutes / 60), 1) : null,
         'maxPower' => ($maxPower === null) ? null : round($maxPower, 1),
         'rangeGained' => self::difference($this->valueAt('range', $end), $this->valueAt('range', $start), 0),
-        'cost' => ($energy !== null && $price > 0) ? round($energy * $price, 2) : null,
+        'cost' => ($energy !== null && ($price > 0 || $free)) ? round($energy * $price, 2) : null,
         // Recharge pilotée : nombre de reprises de charge et durée pendant laquelle le câble est resté branché
         'resumes' => isset($session['resumes']) ? $session['resumes'] : 1,
         'pluggedMinutes' => isset($session['pluggedMinutes']) ? $session['pluggedMinutes'] : null,

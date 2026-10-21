@@ -1097,10 +1097,11 @@ var myskodaJournal = (function() {
         address.title = '{{Adresse affichée pour ce lieu. Vous pouvez la corriger si celle donnée par Škoda est fausse}}'
         var price = el('input', 'msj-small')
         price.type = 'text'
-        price.value = place.price ? String(place.price).replace('.', DECIMAL) : ''
+        // 0 est un prix (gratuit à cet endroit), à montrer comme tel
+        price.value = (place.price !== null && place.price !== undefined) ? String(place.price).replace('.', DECIMAL) : ''
         // Case vide : c'est le prix général de la configuration qui s'applique, il est donc montré en filigrane
         price.placeholder = (map.price > 0) ? show(map.price, U.price, 2) : U.price
-        price.title = U.fuel ? '{{Facultatif : prix du litre à cet endroit, si vous y faites le plein. Vide : le prix général de la configuration du plugin}}' : '{{Facultatif : prix du kWh à cet endroit, si vous y rechargez. Vide : le prix général de la configuration du plugin}}'
+        price.title = U.fuel ? '{{Facultatif : prix du litre à cet endroit, si vous y faites le plein. Vide : le prix général de la configuration du plugin. 0 : gratuit ici}}' : '{{Facultatif : prix du kWh à cet endroit, si vous y rechargez. Vide : le prix général de la configuration du plugin. 0 : recharge gratuite ici}}'
         var radius = el('input', 'msj-small')
         radius.type = 'text'
         radius.value = place.radius ? String(place.radius) : ''

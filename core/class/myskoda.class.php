@@ -2516,13 +2516,36 @@ class myskoda extends eqLogic {
     return array_reverse($this->addIntervals($refuels));
   }
 
+  // Délai après la fin d'un trajet pendant lequel une hausse du compteur, vue voiture garée, en est la fin
+  const LATE_MILEAGE_WINDOW = 900;
+
+  // Rattache au trajet qui la précède une hausse du compteur arrivée peu après lui. Une hausse vue voiture garée est
+  // inscrite comme un trajet d'une seconde (applyVehicle) ; quand elle suit de peu un trajet, ce n'en est pas un autre :
+  // c'est la fin du même, que Škoda a transmise en retard. Le retour d'un aller-retour apparaissait coupé en deux, un
+  // trajet de 5 km arrivé à la maison puis un autre de 5 km « durée inconnue » de la maison à la maison (constaté chez
+  // un testeur en octobre 2026). Le trajet va alors jusqu'à l'heure de ce relevé, d'où se lisent sa distance et son arrivée.
+  private static function mergeLateMileage($_periods) {
+    $merged = array();
+    foreach ($_periods as $period) {
+      $count = count($merged);
+      $instant = !$period[2] && strtotime($period[1]) - strtotime($period[0]) <= 1;
+      if ($instant && $count > 0 && !$merged[$count - 1][2]
+        && strtotime($period[0]) - strtotime($merged[$count - 1][1]) <= self::LATE_MILEAGE_WINDOW) {
+        $merged[$count - 1][1] = $period[1];
+        continue;
+      }
+      $merged[] = $period;
+    }
+    return $merged;
+  }
+
   // Trajets de la période, du plus récent au plus ancien, d'après l'historique de « En déplacement »
   public function getTrips($_start, $_end) {
     $capacity = $this->getCapacity();
     // Le coût d'un trajet est estimé au prix général de la configuration du plugin
     $price = $this->getDefaultPrice();
     $trips = array();
-    foreach ($this->periods('moving', $_start, $_end) as $period) {
+    foreach (self::mergeLateMileage($this->periods('moving', $_start, $_end)) as $period) {
       list($start, $end, $ongoing) = $period;
       $minutes = self::minutesBetween($start, $end);
       $distance = self::difference($this->valueAt('mileage', $end), $this->valueAt('mileage', $start), 0);
@@ -2642,7 +2665,11 @@ class myskoda extends eqLogic {
           $maxPower = max((float) $maxPower, (float) $history->getValue());
         }
       }
-      $position = $this->positionAt($start);
+      // Lieu de la recharge lu à sa fin : la voiture ne bouge pas pendant qu'elle charge, et la position de son nouveau
+      // stationnement est écrite à l'heure du relevé le plus récent de la lecture, qui peut suivre de quelques secondes le
+      // début de la charge. Lue au début, elle donnait le stationnement précédent (constaté chez un testeur le
+      // 2026-10-20 : recharge rapide placée au lieu de la recharge du matin, à 250 km, position écrite 12 s après).
+      $position = $this->positionAt($end);
       $price = $this->priceAt($position);
       // Heures creuses : prix moyen de la recharge, pondéré par la part prise en heures creuses, pour une recharge faite
       // chez soi ; si la position de Jeedom n'est pas réglée, pour toute recharge faite là où vaut le prix général
@@ -2659,7 +2686,7 @@ class myskoda extends eqLogic {
         'end' => $end,
         'ongoing' => $ongoing,
         'minutes' => $minutes,
-        'place' => $this->placeAt($start),
+        'place' => ($position === null) ? null : $this->placeLabel($position[0], $position[1]),
         'position' => $position,
         'price' => ($price > 0) ? round($price, 4) : null,
         'offPeakShare' => ($offPeakShare === null) ? null : (int) round($offPeakShare * 100),

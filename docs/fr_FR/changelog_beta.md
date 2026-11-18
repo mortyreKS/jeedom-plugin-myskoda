@@ -4,6 +4,13 @@
 >
 >Version beta, état des essais au 14/10/2026. Le plugin tourne sur un véhicule à essence (trajets, carburant, position, entretien) et sur trois véhicules électriques, trois Elroq (batterie, autonomie, points de recharge ; sur l'un des trois, détection de la recharge, commandes de charge et de climatisation, tuile personnalisée et trajets). Pas encore essayés sur un véhicule réel : un hybride, le chauffage auxiliaire, et les fonctions expérimentales. Les retours sont les bienvenus.
 
+# 0.91 — 18/11/2026
+
+- **Prix d'une borne publique plus facile à saisir** (demande d'un testeur) : dans l'onglet Recharges (ou Pleins), le lieu de chaque recharge se clique ; il ouvre l'onglet « Lieux » sur ce lieu, sa ligne encadrée, le curseur dans la case « Prix du kWh ici ». Plus besoin de le chercher parmi les lieux plus récents. Le prix reste celui du lieu : il vaut pour toutes les recharges faites à cet endroit.
+- Onglet « Lieux » : un clic sur un point de la carte sélectionne aussi la ligne de ce lieu dans la liste, réglages ouverts, même s'il fait partie des lieux plus anciens repliés. Un bouton « Nom, prix du kWh et réglages de ce lieu », sous la carte, y descend directement. Le point se déplace toujours comme avant.
+- Onglet « Carte » (demande d'un testeur) : la carte est cadrée sur les trajets et les recharges du jour choisi, et non plus sur tous les lieux connus. Les autres lieux restent dessinés ; dézoomez pour les voir. Un jour sans trajet ni recharge localisés montre tous les lieux, comme avant.
+- Essayé sur la box, sur le véhicule à essence (onglet Pleins, onglet Lieux, onglet Carte) ; pas encore sur un véhicule électrique.
+
 # 0.90 — 21/10/2026
 
 - **Prix 0 sur un lieu** (demande d'un testeur) : dans l'onglet « Lieux », un prix de 0 au réglage « Prix du kWh ici » (ou « Prix du litre ici ») veut dire que la recharge y est gratuite, chez un client ou un proche qui l'offre : ses recharges y coûtent 0 €. Une case vide garde le prix général, comme avant. Jusqu'ici, 0 était effacé et ces recharges étaient comptées au prix général.

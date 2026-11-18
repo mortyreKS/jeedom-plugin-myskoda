@@ -6,6 +6,13 @@
 
 The detailed history of the earlier beta versions is in the [French changelog](../fr_FR/changelog_beta.md).
 
+# 0.91 — 18/11/2026
+
+- **Easier price entry for a public charger** (tester request): in the Charging (or Refuelling) tab, the place of each session can be clicked; it opens the “Places” tab on that place, its row outlined, with the cursor in the “Price per kWh here” box. No need to look for it among more recent places. The price still belongs to the place: it applies to every charging session done there.
+- “Places” tab: a click on a point of the map also selects that place's row in the list, settings open, even if it is among the folded older places. A “Name, price per kWh and settings of this place” button below the map takes you straight to it. The point can still be moved as before.
+- “Map” tab (tester request): the map is framed on the trips and charging sessions of the selected day, no longer on all known places. The other places are still drawn; zoom out to see them. A day with no located trip or charging session shows all the places, as before.
+- Tested on the box, on the petrol vehicle (Refuelling, Places and Map tabs); not yet on an electric vehicle.
+
 # 0.90 — 21/10/2026
 
 - **Price 0 on a place** (a tester's request): in the “Places” tab, a price of 0 in the “Price per kWh here” (or “Price per litre here”) setting means charging is free there, at a customer's or a friend's who offers it: charging sessions there cost 0. An empty box keeps the general price, as before. Until now, 0 was erased and these sessions were counted at the general price.

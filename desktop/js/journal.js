@@ -132,6 +132,10 @@ var myskodaJournal = (function() {
     // Le repli ne sert que sur les écrans étroits.
     '@media (min-width: 900px) { .msj-place-more { display: flex !important; flex: 0 1 auto; padding: 0; margin-left: auto; } .msj-place .msj-toggle { display: none; } .msj-place input.msj-address { flex: 2 1 220px; } }',
     '.msj-place input.msj-price { flex: 0 1 190px; }',
+    // Lieu choisi sur la carte ou depuis une recharge : sa ligne est encadrée
+    '.msj-place.msj-selected { outline: 2px solid #2a7ab9; outline-offset: 2px; border-radius: 4px; background: rgba(42,122,185,.08); }',
+    '.msj-goto { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }',
+    '.msj-goto:hover { color: #2a7ab9; }',
     '.msj-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 14px; }',
     '.msj-kpi { border-radius: 8px; background: rgba(127,127,127,.14); padding: 10px 14px; }',
     '.msj-kpi b { font-size: 22px; display: block; }',
@@ -709,7 +713,7 @@ var myskodaJournal = (function() {
       }
       var holder = el('div', 'msj-map')
       content.appendChild(holder)
-      content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Points de couleur : vos favoris. Point vert cerclé de blanc : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Cercle bleu en pointillés : aller-retour revenu à son point de départ. Points rouges : recharges ou pleins du jour choisi.}}'))
+      content.appendChild(el('div', 'msj-note', '{{Points gris : tous les lieux où la voiture a déjà stationné, quel que soit le jour. Points de couleur : vos favoris. Point vert cerclé de blanc : sa position actuelle. Traits bleus : trajets du jour choisi seulement, tracés à vol d\'oiseau entre le départ et l\'arrivée, car Škoda ne fournit pas le parcours. Cercle bleu en pointillés : aller-retour revenu à son point de départ. Points rouges : recharges ou pleins du jour choisi. La carte est cadrée sur les trajets et les recharges ou pleins du jour ; dézoomez pour voir les autres lieux.}}'))
       loadLeaflet(function() {
         var chart = L.map(holder)
         liveMaps.push(chart)
@@ -745,13 +749,24 @@ var myskodaJournal = (function() {
             .bindPopup(el('span', null, map.now.name + (map.now.place ? ' — ' + map.now.place : '')))
           bounds.push(map.now.position)
         }
-        // Les trajets comptent dans le cadrage : un départ ou une arrivée hors des lieux mémorisés doit rester visible
+        // La carte se cadre sur la journée choisie : ses trajets et ses recharges ou pleins (demande d'un testeur le
+        // 2026-11-10 : cadrée sur tous les lieux, une journée en ville se perdait dans l'ensemble). Les autres lieux
+        // restent dessinés, hors du cadre. Une journée sans rien de localisé garde le cadrage sur tous les lieux.
+        var dayBounds = []
         day.trips.forEach(function(trip) {
           if (trip.fromPosition && trip.toPosition) {
-            bounds.push(trip.fromPosition)
-            bounds.push(trip.toPosition)
+            dayBounds.push(trip.fromPosition)
+            dayBounds.push(trip.toPosition)
           }
         })
+        day.charges.forEach(function(charge) {
+          if (charge.position) {
+            dayBounds.push(charge.position)
+          }
+        })
+        if (dayBounds.length > 0) {
+          bounds = dayBounds
+        }
         var frame = function() {
           if (bounds.length > 0) {
             chart.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
@@ -802,7 +817,57 @@ var myskodaJournal = (function() {
     }
 
     // Page « Lieux » : carte des lieux, ajout d'un favori par son adresse ou par un clic sur la carte, liste à gérer
-    function renderPlaces(map) {
+    // « keep » : page redessinée après une modification, le lieu sélectionné le reste
+    function renderPlaces(map, keep) {
+      // Lieu choisi sur la carte, ou demandé par la page Recharges (ses coordonnées) : sa ligne est encadrée, dépliée,
+      // et dévoilée s'il est parmi les lieux repliés (demande d'un testeur le 2026-11-10)
+      if (!keep) {
+        state.selectedPlace = null
+      }
+      var focusIndex = null
+      if (state.focusPlace) {
+        map.places.forEach(function(place, index) {
+          if (place.lat == state.focusPlace[0] && place.lng == state.focusPlace[1]) {
+            focusIndex = index
+          }
+        })
+        state.focusPlace = null
+        if (focusIndex === null) {
+          message.textContent = '{{Ce lieu n\'est plus dans la liste : il a peut-être été supprimé.}}'
+        } else {
+          state.selectedPlace = map.places[focusIndex].lat + ',' + map.places[focusIndex].lng
+        }
+      }
+      var entries = {}
+      var reveal = null
+      var selectPlace = function(index, scroll) {
+        var key = map.places[index].lat + ',' + map.places[index].lng
+        state.selectedPlace = key
+        Object.keys(entries).forEach(function(other) {
+          entries[other].row.classList.toggle('msj-selected', other == key)
+        })
+        var entry = entries[key]
+        if (!entry) {
+          return
+        }
+        // Lieu parmi les plus anciens, repliés : la liste est dépliée
+        if (reveal && entry.folded) {
+          reveal()
+        }
+        if (entry.more) {
+          state.openPlaces[key] = true
+          entry.more.style.display = ''
+          entry.chevron.className = 'fas fa-chevron-up'
+        }
+        if (scroll) {
+          entry.row.scrollIntoView({ block: 'center' })
+          if (entry.price) {
+            try {
+              entry.price.focus({ preventScroll: true })
+            } catch (error) {}
+          }
+        }
+      }
       // La page est redessinée après chaque modification. Sans précaution elle se vide un instant et le navigateur
       // remonte tout en haut : la hauteur est donc tenue pendant le changement, et la position de lecture remise.
       var reload = function(text) {
@@ -821,7 +886,7 @@ var myskodaJournal = (function() {
           var pageY = window.pageYOffset
           content.style.minHeight = content.offsetHeight + 'px'
           clearContent()
-          renderPlaces(fresh)
+          renderPlaces(fresh, true)
           message.textContent = text
           positions.forEach(function(saved) { saved[0].scrollTop = saved[1] })
           window.scrollTo(0, pageY)
@@ -928,8 +993,14 @@ var myskodaJournal = (function() {
         })
         var cancel = el('span', 'msj-btn', '{{Annuler}}')
         cancel.addEventListener('click', function() { reload('') })
+        // Le nom, le prix et les autres réglages de ce lieu sont dans sa ligne de la liste, sous la carte
+        var settings = el('span', 'msj-btn')
+        settings.appendChild(el('i', 'fas fa-list'))
+        settings.appendChild(document.createTextNode(U.fuel ? ' {{Nom, prix du litre et réglages de ce lieu}}' : ' {{Nom, prix du kWh et réglages de ce lieu}}'))
+        settings.addEventListener('click', function() { selectPlace(index, true) })
         editBar.appendChild(keep)
         editBar.appendChild(cancel)
+        editBar.appendChild(settings)
         holder.scrollIntoView({ block: 'start' })
       }
       loadLeaflet(function() {
@@ -950,10 +1021,16 @@ var myskodaJournal = (function() {
           // Un nœud et non une chaîne : Leaflet écrirait une chaîne en HTML, or le nom et l'adresse viennent de Škoda,
           // d'OpenStreetMap ou d'une saisie
           point.bindTooltip(el('span', null, (place.name ? place.name + ' — ' : '') + place.address))
-          // Un clic sur un lieu l'ouvre pour le voir de près et, au besoin, le déplacer
+          // Un clic sur un lieu l'ouvre pour le voir de près et, au besoin, le déplacer ; sa ligne est sélectionnée
+          // dans la liste. Sans droit de modification, le clic mène directement à sa ligne.
           point.on('click', function(event) {
             L.DomEvent.stopPropagation(event)
-            startEdit(index)
+            if (map.canEdit) {
+              startEdit(index)
+              selectPlace(index, false)
+            } else {
+              selectPlace(index, true)
+            }
           })
           bounds.push([place.lat, place.lng])
         })
@@ -963,7 +1040,10 @@ var myskodaJournal = (function() {
           bounds.push(map.now.position)
         }
         var frame = function() {
-          if (bounds.length > 0) {
+          if (focusIndex !== null) {
+            // Lieu demandé par la page Recharges : la carte s'ouvre sur lui
+            chart.setView([map.places[focusIndex].lat, map.places[focusIndex].lng], 16)
+          } else if (bounds.length > 0) {
             chart.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 })
           } else {
             chart.setView([46.6, 2.4], 5)
@@ -1075,7 +1155,13 @@ var myskodaJournal = (function() {
         var row = el('div', 'msj-place')
         var dot = el('span', null, '')
         dot.style.cssText = 'flex:0 0 14px;width:14px;height:14px;border-radius:50%;background:' + (place.favorite ? (place.color || map.defaultColor) : '#6f7a80') + ';'
+        var key = place.lat + ',' + place.lng
+        if (state.selectedPlace == key) {
+          row.classList.add('msj-selected')
+          state.openPlaces[key] = true
+        }
         if (!map.canEdit) {
+          entries[key] = { row: row }
           row.appendChild(dot)
           if (place.name) {
             row.appendChild(el('b', null, place.name))
@@ -1083,7 +1169,6 @@ var myskodaJournal = (function() {
           row.appendChild(el('span', null, place.address))
           return row
         }
-        var key = place.lat + ',' + place.lng
         var name = el('input', 'msj-name')
         name.type = 'text'
         name.value = place.name || ''
@@ -1158,6 +1243,7 @@ var myskodaJournal = (function() {
           return wrap
         }
         more.appendChild(field(U.fuel ? '{{Prix du litre ici}}' : '{{Prix du kWh ici}}', price))
+        entries[key] = { row: row, more: more, chevron: chevron, price: price }
 
         var head = [dot, star, name, address, locate, toggle]
         if (isFavorite) {
@@ -1277,22 +1363,41 @@ var myskodaJournal = (function() {
       var SHOWN = 6
       var hidden = el('div')
       hidden.style.display = 'none'
+      var folded = false
       others.forEach(function(item, rank) {
-        (rank < SHOWN ? content : hidden).appendChild(buildRow(item[0], item[1], 0, 0))
+        var row = buildRow(item[0], item[1], 0, 0)
+        ;(rank < SHOWN ? content : hidden).appendChild(row)
+        if (rank >= SHOWN) {
+          entries[item[0].lat + ',' + item[0].lng].folded = true
+          // Lieu sélectionné parmi les plus anciens : la liste s'ouvre d'emblée
+          folded = folded || row.classList.contains('msj-selected')
+        }
       })
       if (others.length > SHOWN) {
         var more = el('span', 'msj-btn', '{{Afficher les}} ' + (others.length - SHOWN) + ' {{lieux plus anciens}}')
         more.style.marginTop = '8px'
-        more.addEventListener('click', function() {
+        reveal = function() {
           hidden.style.display = ''
           more.style.display = 'none'
-        })
+        }
+        more.addEventListener('click', reveal)
         content.appendChild(hidden)
         content.appendChild(more)
+        if (folded) {
+          reveal()
+        }
       }
 
       if (map.canEdit) {
         content.appendChild(el('div', 'msj-note', '{{Le nom d\'un lieu remplace son adresse dans le journal, sur la tuile et dans la commande « Lieu », utilisable dans les scénarios. Pour donner à un lieu le nom d\'un autre, choisissez-le dans la liste de la case « Nom » : deux lieux de même nom s\'affichent sous ce nom et comptent pour un même lieu dans les trajets ; chacun garde son prix, et seul celui marqué d\'une étoile a un rayon. Le rayon général des favoris se règle dans la configuration du plugin ; chaque favori peut avoir le sien, plus large à la campagne ou pour un parking souterrain, plus serré en ville. Le prix saisi sur un lieu s\'applique aux recharges ou aux pleins faits à cet endroit ; ailleurs, c\'est le prix de la configuration du plugin.}}'))
+      }
+      // Arrivée depuis la page Recharges : la page descend jusqu'à la ligne du lieu, curseur dans son prix
+      if (focusIndex !== null) {
+        setTimeout(function() {
+          if (document.body.contains(content) && state.tab == 'places') {
+            selectPlace(focusIndex, true)
+          }
+        }, 150)
       }
     }
 
@@ -1310,7 +1415,14 @@ var myskodaJournal = (function() {
           // Une cellule peut porter son propre intitulé ({ text, label }) quand elle ne contient pas ce qu'annonce sa
           // colonne (le nombre de recharges d'une ligne de total, rangé sous « Batterie »)
           var own = (cell !== null && typeof cell == 'object')
-          var td = el('td', headers[index][1] || null, own ? cell.text : cell)
+          var td = el('td', headers[index][1] || null, (own && cell.click) ? null : (own ? cell.text : cell))
+          // Cellule cliquable (lieu d'une recharge, qui ouvre ce lieu dans la page Lieux)
+          if (own && cell.click) {
+            var link = el('span', 'msj-goto', cell.text)
+            link.title = cell.title || ''
+            link.addEventListener('click', cell.click)
+            td.appendChild(link)
+          }
           // Intitulé de la colonne, affiché devant la valeur quand le tableau est présenté en fiches
           td.setAttribute('data-label', own ? cell.label : headers[index][0])
           tr.appendChild(td)
@@ -1499,7 +1611,17 @@ var myskodaJournal = (function() {
       monthsOf(rows).forEach(function(month) {
         lines.push({ group: true, cells: chargeCells(monthLabel(month.key), '', month.rows, true) })
         month.rows.forEach(function(row) {
-          lines.push({ cells: chargeCells(dayLabel(row.start) + ' ' + hour(row.start), chargePlace(row), [row]) })
+          // Le lieu ouvre la page Lieux sur ce lieu, son prix prêt à saisir : une borne publique se retrouve sans
+          // la chercher parmi les lieux plus récents (demande d'un testeur le 2026-11-10)
+          var place = row.placePoint ? {
+            text: chargePlace(row), label: '{{Lieu}}', title: U.fuel ? '{{Ouvrir ce lieu dans la page Lieux, pour y saisir le prix du litre}}' : '{{Ouvrir ce lieu dans la page Lieux, pour y saisir le prix du kWh}}',
+            click: function() {
+              state.focusPlace = row.placePoint
+              state.tab = 'places'
+              refresh()
+            }
+          } : chargePlace(row)
+          lines.push({ cells: chargeCells(dayLabel(row.start) + ' ' + hour(row.start), place, [row]) })
         })
       })
       content.appendChild(headline(rows.length == 0 ? U.noRefill : rows.length + ' ' + U.refills, rows.length == 0 ? null : function() {

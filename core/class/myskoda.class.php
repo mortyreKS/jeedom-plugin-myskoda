@@ -1820,6 +1820,18 @@ class myskoda extends eqLogic {
     return ($_default !== null) ? $_default : round($_lat, 5) . ', ' . round($_lng, 5);
   }
 
+  // Coordonnées du lieu mémorisé auquel une position est rattachée (favori dans son rayon, sinon lieu proche), ou null :
+  // la page Recharges s'en sert pour ouvrir ce lieu dans la page Lieux (demande d'un testeur le 2026-11-10). Les
+  // coordonnées, et non le rang, désignent le lieu : le rang change quand un lieu ancien est retiré.
+  private function placePointAt($_position) {
+    if ($_position === null) {
+      return null;
+    }
+    $places = $this->getPlaces();
+    $index = self::nearestPlace($places, $_position[0], $_position[1]);
+    return ($index === null) ? null : array((float) $places[$index]['lat'], (float) $places[$index]['lng']);
+  }
+
   // Prix du kWh à une position : celui du lieu s'il en a un, sinon celui de la configuration du plugin ; 0 si aucun
   private function priceAt($_position) {
     $own = $this->placePriceAt($_position);
@@ -2505,6 +2517,7 @@ class myskoda extends eqLogic {
           'minutes' => 0,
           'place' => $this->placeAt($at),
           'position' => $position,
+          'placePoint' => $this->placePointAt($position),
           'price' => ($price > 0 || $free) ? $price : null,
           'levelStart' => $previous,
           'levelEnd' => $level,
@@ -2694,6 +2707,7 @@ class myskoda extends eqLogic {
         'minutes' => $minutes,
         'place' => ($position === null) ? null : $this->placeLabel($position[0], $position[1]),
         'position' => $position,
+        'placePoint' => $this->placePointAt($position),
         'price' => ($price > 0 || $free) ? round($price, 4) : null,
         'offPeakShare' => ($offPeakShare === null) ? null : (int) round($offPeakShare * 100),
         'levelStart' => $levelStart,
